@@ -191,6 +191,30 @@
       </div>
       <p id="shift-status" role="status"></p>
       <div id="shift-results"></div>
+      <section class="site-comparison" aria-labelledby="site-compare-heading">
+        <h3 id="site-compare-heading">Compare landing sites</h3>
+        <form id="site-compare-form">
+          <div class="site-compare-panels">
+            <fieldset id="compare-a" disabled>
+              <legend>Scenario A</legend>
+              <label>Site <select name="site" required></select></label>
+              <label>Start date (UTC) <input name="start" type="date" required></label>
+              <label class="check"><input name="terrain" type="checkbox"> Use real terrain</label>
+            </fieldset>
+            <fieldset id="compare-b" disabled>
+              <legend>Scenario B</legend>
+              <label>Site <select name="site" required></select></label>
+              <label>Start date (UTC) <input name="start" type="date" required></label>
+              <label class="check"><input name="terrain" type="checkbox"> Use real terrain</label>
+            </fieldset>
+          </div>
+          <p id="site-compare-period" class="caption"></p>
+          <button id="compare-sites" type="submit" disabled>Compare sites</button>
+        </form>
+        <p id="site-compare-status" class="caption" role="status"></p>
+        <div id="site-compare-visuals"></div>
+        <div id="site-compare-results"></div>
+      </section>
     </section>
     <details class="panel analysis expert-only" id="analysis">
       <summary>Scientific Analysis</summary>
