@@ -98,7 +98,7 @@ def test_errors():
     err(client.post("/api/analyze", json={**BODY, "site_id": "R99"}), 404, "site_not_found")
     err(client.post("/api/analyze", json={**BODY, "days": 0}), 422, "bad_params")
     err(client.post("/api/analyze", json={"site_id": "Site01"}), 422, "bad_params")
-    err(client.post("/api/analyze", json={**BODY, "days": 100, "step_min": 5}), 422, "too_many_points")
+    err(client.post("/api/analyze", json={**BODY, "days": 100, "step_min": 10}), 422, "too_many_points")
     err(client.post("/api/analyze", json={**BODY, "start": "2020-01-01T00:00:00Z"}), 422, "date_out_of_range")
     err(client.post("/api/compare", json={"a": BODY, "b": {**BODY, "days": 10}}), 422, "incompatible_scenarios")
 
@@ -127,6 +127,7 @@ def test_real_table_is_preferred_over_demo():
         assert m["light_hours"] == 120.0 and m["both_hours"] == 120.0  # 5 days, always visible
         err(client.post("/api/analyze", json={**BODY, "days": 30}), 422, "date_out_of_range")
         err(client.post("/api/analyze", json={**BODY, "days": 5, "step_min": 45}), 422, "bad_params")
+        err(client.post("/api/analyze", json={**BODY, "days": 5, "step_min": 5}), 422, "bad_params")
     finally:
         ephemeris.DATA_DIR = old_dir
         service._sites.cache_clear()
