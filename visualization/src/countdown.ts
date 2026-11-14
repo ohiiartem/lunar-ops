@@ -15,10 +15,10 @@ export function nextChange(flags: boolean[], index: number): Countdown {
   return { visible, steps: null, atIndex: null }
 }
 
-export function formatDuration(hours: number) {
+export function formatDuration(hours: number, showMinutes = false) {
   const minutes = Math.round(hours * 60)
   const d = Math.floor(minutes / 1440), h = Math.floor((minutes % 1440) / 60), m = minutes % 60
-  if (d > 0) return `${d} d ${h} h`
+  if (d > 0) return `${d} d ${h} h${showMinutes && m ? ` ${m} min` : ''}`
   if (h > 0) return m ? `${h} h ${m} min` : `${h} h`
   return `${m} min`
 }
@@ -30,13 +30,15 @@ export function describe(flags: boolean[], index: number, stepMin: number, label
   const c = nextChange(flags, index)
   if (c.steps === null) {
     const left = (flags.length - 1 - index) * stepMin / 60
-    return { label: `${c.visible ? labels.stays : labels.stayed} until the end of the period`, time: `${formatDuration(left)} left` }
+    return { label: `${c.visible ? labels.stays : labels.stayed} until the end of the period`, time: `${formatDuration(left, true)} left` }
   }
-  return { label: `${c.visible ? labels.ending : labels.starting} in`, time: formatDuration(c.steps * stepMin / 60) }
+  return { label: `${c.visible ? labels.ending : labels.starting} in`, time: formatDuration(c.steps * stepMin / 60, true) }
 }
 
 export function countdownHtml(item: { label: string; time: string }) {
-  return `<span class="countdown-label">${item.label}</span><span class="countdown-time">${item.time}</span>`
+  const time = item.time.replace(/(\d+) (d|h|min)\b/g,
+    '<span class="countdown-part">$1 <span class="countdown-unit">$2</span></span>')
+  return `<span class="countdown-label">${item.label}</span><span class="countdown-time">${time}</span>`
 }
 
 const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']

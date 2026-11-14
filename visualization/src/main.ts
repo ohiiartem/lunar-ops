@@ -1,8 +1,9 @@
 import './style.css'
 import { renderAnalysis, updateAnalysisCursor } from './analysis'
 import { createSky } from './sky-view'
-import { assetFolder, dayMs, loadScenario, loadSites, requestAPI } from './sky-data'
-import type { Comparison, Scenario } from './sky-data'
+import { assetFolder, dayMs, loadScenario, loadSites, parseObservations, requestAPI } from './sky-data'
+import type { Comparison, Scenario, TimeSeries } from './sky-data'
+import { showComparisonViews } from './comparison-views'
 import { showComparison, showMetrics } from './mission'
 import { countdownHtml, describe } from './countdown'
 import { num } from './format'
@@ -45,6 +46,22 @@ const shiftButtons = document.querySelectorAll<HTMLButtonElement>('[data-shift],
 const metrics = element('mission-metrics')
 const shiftResults = element('shift-results')
 const shiftStatus = element('shift-status')
+const siteCompareForm = element<HTMLFormElement>('site-compare-form')
+const siteComparePanels = ['compare-a', 'compare-b'].map(id => {
+  const panel = element<HTMLFieldSetElement>(id)
+  return {
+    panel,
+    site: panel.querySelector<HTMLSelectElement>('select[name="site"]')!,
+    start: panel.querySelector<HTMLInputElement>('input[name="start"]')!,
+    terrain: panel.querySelector<HTMLInputElement>('input[name="terrain"]')!,
+  }
+})
+const compareSitesButton = element<HTMLButtonElement>('compare-sites')
+const siteCompareStatus = element('site-compare-status')
+const siteCompareResults = element('site-compare-results')
+const siteCompareVisuals = element('site-compare-visuals')
+let disposeComparisonViews: (() => void) | undefined
+let siteComparisonLoading: AbortController | undefined
 const defaultStart = '2026-11-14T00:00:00Z'
 const dateOnly = (time: number) => new Date(time).toISOString().slice(0,10)
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
@@ -136,7 +153,7 @@ function drawDirections() {
   if (!current) return
   const { observations } = current
   const index = reducedMotion.matches ? Number(hour.value) : visualHour
-  if (workspace.dataset.detail==='expert' && analysis.open) updateAnalysisCursor(observations,visualHour)
+  if (workspace.dataset.detail==='expert' && analysis.open) updateAnalysisCursor(element('timeline'),observations,visualHour)
   if (settings.dataset.mode === 'system') {
     const initialTime = Date.parse(observations.times[0].replace(' ','T')+'Z')
     if (system) element('orbit-coverage').hidden = system.update(initialTime+index*current.scenario.step_min*60_000)
@@ -245,7 +262,7 @@ function render() {
   element('mission-date').textContent = `${time} UTC`
   const expert = workspace.dataset.detail==='expert'
   if (expert && analysis.open && analyzed!==observations) {
-    renderAnalysis(observations,current.analysis,selectHour)
+    renderAnalysis(element('timeline'),observations,current.analysis,selectHour)
     analyzed=observations
   }
   const step = scenario.step_min
@@ -426,6 +443,10 @@ async function selectSite() {
   analyzeButton.disabled = true
   if (settings.dataset.mode==='system') renderSystemReadout()
   clearComparison()
+  clearSiteComparison()
+  compareSitesButton.disabled = true
+  for (const {panel} of siteComparePanels) panel.disabled = true
+  element('site-compare-period').textContent = ''
   setView('map')
   resetMap()
   for (const id of ['site-facts','comparison','timeline','mission-metrics']) element(id).replaceChildren()
@@ -470,6 +491,7 @@ async function selectSite() {
     showMetrics(metrics,data.analysis)
     reportSource(data.demo,data.offline || catalogueOffline)
     for (const button of shiftButtons) button.disabled = data.offline || catalogueOffline
+    updateSiteComparison(current)
     status.textContent = ''
     if (settings.dataset.mode==='terrain' && previousView==='terrain') void openTerrain()
     else if (settings.dataset.mode==='terrain' && (previousView!=='map' || !metadata)) openSky(previousView==='surface')
@@ -489,6 +511,105 @@ function chooseSite(reset: boolean) {
 }
 
 const shiftInput = element<HTMLInputElement>('shift-custom')
+
+function clearSiteComparison() {
+  siteComparisonLoading?.abort()
+  siteComparisonLoading = undefined
+  siteCompareStatus.textContent = ''
+  siteCompareResults.replaceChildren()
+  disposeComparisonViews?.()
+  disposeComparisonViews = undefined
+  siteCompareVisuals.replaceChildren()
+}
+
+function updateComparePanel(fields: typeof siteComparePanels[number], scenario: Scenario) {
+  const selected = catalogue.find(candidate => candidate.id === fields.site.value)!
+  fields.start.min = dateOnly(Math.ceil(Date.parse(selected.data_from!) / dayMs) * dayMs)
+  fields.start.max = dateOnly(Date.parse(selected.data_to!) - scenario.days * dayMs)
+  if (fields.start.value < fields.start.min || fields.start.value > fields.start.max) {
+    fields.start.value = fields.start.min
+  }
+  fields.terrain.disabled = !selected.has_terrain
+  if (fields.terrain.disabled) fields.terrain.checked = false
+}
+
+function updateSiteComparison(data: Data) {
+  const { scenario } = data
+  const options = catalogue.filter(candidate =>
+    Date.parse(candidate.data_to ?? '') - Math.ceil(Date.parse(candidate.data_from ?? '') / dayMs) * dayMs >= scenario.days * dayMs,
+  )
+  const offline = data.offline || catalogueOffline
+  const first = options.find(candidate => candidate.id === data.site.id) ?? options[0]
+  const second = options.find(candidate => candidate.id !== first?.id) ?? first
+  for (const [index, fields] of siteComparePanels.entries()) {
+    fields.site.replaceChildren(...options.map(candidate => new Option(candidate.name, candidate.id)))
+    fields.panel.disabled = offline || !options.length
+    const selected = index === 0 ? first : second
+    if (!selected) continue
+    fields.site.value = selected.id
+    fields.start.value = scenario.start.slice(0,10)
+    fields.terrain.checked = scenario.use_terrain
+    updateComparePanel(fields, scenario)
+  }
+  element('site-compare-period').textContent = `Shared period · ${scenario.days} days · ${scenario.step_min}-minute steps`
+  compareSitesButton.disabled = offline || !options.length
+  if (offline) siteCompareStatus.textContent = 'Site comparison requires a connection to the server.'
+  else if (!options.length) siteCompareStatus.textContent = 'No site has data for the current period length.'
+}
+
+for (const fields of siteComparePanels) {
+  fields.panel.oninput = event => {
+    if (!current) return
+    if (event.target === fields.site) updateComparePanel(fields, current.scenario)
+    clearSiteComparison()
+    compareSitesButton.disabled = false
+  }
+}
+
+siteCompareForm.onsubmit = async event => {
+  event.preventDefault()
+  if (!current || compareSitesButton.disabled) return
+  const scenario = current.scenario
+  const [a, b] = siteComparePanels.map(fields => ({
+    ...scenario,
+    site_id: fields.site.value,
+    start: fields.start.value + 'T00:00:00Z',
+    use_terrain: fields.terrain.checked,
+  }))
+  const names = [
+    `Scenario A · ${siteComparePanels[0].site.selectedOptions[0].text}`,
+    `Scenario B · ${siteComparePanels[1].site.selectedOptions[0].text}`,
+  ] as const
+  clearSiteComparison()
+  const loader = new AbortController()
+  siteComparisonLoading = loader
+  compareSitesButton.disabled = true
+  siteCompareStatus.textContent = 'Comparing landing sites…'
+  try {
+    const [data, ...series] = await Promise.all([
+      requestAPI<Comparison>('compare', loader.signal, {a,b}),
+      requestAPI<TimeSeries>('timeseries', loader.signal, a),
+      requestAPI<TimeSeries>('timeseries', loader.signal, b),
+    ] as const)
+    if (loader.signal.aborted) return
+    reportSource([data.a.data_source,data.b.data_source].includes('synthetic_demo'), catalogueOffline)
+    showComparison(siteCompareResults, data, names)
+    disposeComparisonViews = showComparisonViews(siteCompareVisuals, [a,b].map((sc,index) => ({
+      ...parseObservations(series[index], sc),
+      analysis: index === 0 ? data.a : data.b,
+      site: catalogue.find(candidate => candidate.id === sc.site_id)!,
+      url: asset(sc.site_id),
+    })), scenario.step_min)
+    siteCompareStatus.textContent = ''
+  } catch (error) {
+    if (!loader.signal.aborted) siteCompareStatus.textContent = errorMessage(error)
+  } finally {
+    if (!loader.signal.aborted) {
+      siteComparisonLoading = undefined
+      compareSitesButton.disabled = false
+    }
+  }
+}
 
 // Dates (UTC, ms) covered by the data of the current site, from /api/sites.
 function dataRange() {

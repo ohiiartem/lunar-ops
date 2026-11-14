@@ -8,7 +8,7 @@ from urllib.request import Request, urlopen
 
 START = "2026-11-14T00:00:00Z"
 DAYS = 30
-STEP_MIN = 30
+STEP_MIN = 60
 
 
 def fetch(api, path, scenario=None):

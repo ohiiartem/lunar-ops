@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { radians } from './model'
 import { floatingMoon } from './floating-moon'
+import { placeGlobeLabel } from './globe-label-layout'
 import { smoothOrbit } from './motion'
 import type { Site } from './model'
 
@@ -129,28 +130,35 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
     camera.projectionMatrix.elements[9] = 2 * floating.pixels / height
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert()
     renderer.render(scene,camera)
-    for (const {position,button} of landmarks) {
+    const occupied: NonNullable<ReturnType<typeof placeGlobeLabel>>[] = []
+    function placeLabel(button: HTMLButtonElement, x: number, y: number) {
+      const box = placeGlobeLabel({x,y}, {width:button.offsetWidth,height:button.offsetHeight}, {width,height}, occupied)
+      button.hidden = !box
+      if (!box) return
+      occupied.push(box)
+      button.style.transform = `translate(${box.x}px,${box.y}px)`
+      return box
+    }
+    function projectLabel(position: THREE.Vector3, button: HTMLButtonElement) {
       const point = position.clone().project(camera)
-      button.hidden = position.dot(camera.position.clone().sub(position))<=0
-      const x=(point.x*.5+.5)*width
-      const y=(-point.y*.5+.5)*height
-      button.style.transform = `translate(${Math.max(0,Math.min(width-150,x))}px,${Math.max(0,y-26)}px)`
+      button.hidden = position.dot(camera.position.clone().sub(position)) <= 0 || point.z < -1 || point.z > 1
+      if (!button.hidden) return {x:(point.x*.5+.5)*width, y:(-point.y*.5+.5)*height}
     }
     connectors.setAttribute('viewBox',`0 0 ${width} ${height}`)
     for(const {i,marker,button,line} of entries) {
-      const point=marker.position.clone().project(camera)
-      const visible=marker.position.dot(camera.position.clone().sub(marker.position))>0
-      button.hidden=!visible
-      line.setAttribute('visibility',visible?'visible':'hidden')
-      if(!visible) continue
-      const x=(point.x*.5+.5)*width,y=(-point.y*.5+.5)*height
-      // Keep the scientific points in place and spread their clickable labels.
-      const left=i%2===0
-      const bx=Math.max(8,Math.min(width-174,x+(left?-194:35)))
-      const by=Math.max(8,Math.min(height-60,y+(left?28:-68)+Math.floor(i/2)*52))
-      button.style.transform=`translate(${bx}px,${by}px)`
+      const point = projectLabel(marker.position,button)
+      const left = i%2 === 0
+      const box = point && placeLabel(button,point.x+(left?-button.offsetWidth-30:35),point.y+(left?28:-68)+Math.floor(i/2)*52)
+      line.setAttribute('visibility',box?'visible':'hidden')
+      if (!point || !box) continue
+      const {x,y} = point
       line.setAttribute('x1',String(x));line.setAttribute('y1',String(y))
-      line.setAttribute('x2',String(left?bx+164:bx));line.setAttribute('y2',String(by+25))
+      line.setAttribute('x2',String(Math.max(box.x,Math.min(box.x+box.width,x))))
+      line.setAttribute('y2',String(Math.max(box.y,Math.min(box.y+box.height,y))))
+    }
+    for (const {position,button} of landmarks) {
+      const point = projectLabel(position,button)
+      if (point) placeLabel(button,point.x,point.y-26)
     }
   }
   const motion=smoothOrbit(controls,draw)

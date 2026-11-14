@@ -80,7 +80,7 @@ export function assetFolder(id: string) {
   return id.replace(/^Site/, 'R')
 }
 
-function parse(payload: TimeSeries, scenario: Scenario) {
+export function parseObservations(payload: TimeSeries, scenario: Scenario) {
   const {t} = payload
   const columns = [payload.sun_az,payload.sun_alt,payload.sun_horizon,payload.sun_visible,
     payload.earth_az,payload.earth_alt,payload.earth_horizon,payload.earth_visible,payload.both_visible]
@@ -127,7 +127,7 @@ export async function loadScenario(scenario: Scenario, url: string, signal: Abor
   if (fatal?.status==='rejected') throw fatal.reason
   const [series,metrics] = outcomes
   if (series.status==='fulfilled' && metrics.status==='fulfilled') {
-    return {...parse(series.value,scenario),analysis:metrics.value,offline:false,
+    return {...parseObservations(series.value,scenario),analysis:metrics.value,offline:false,
       demo:[series.value.data_source,metrics.value.data_source].includes('synthetic_demo')}
   }
   const response = await fetch(url+'sky.json',{signal}).catch(()=>undefined)
@@ -138,5 +138,5 @@ export async function loadScenario(scenario: Scenario, url: string, signal: Abor
   if (!(Object.keys(scenario) as (keyof Scenario)[]).every(key=>scenario[key]===saved.scenario[key])) {
     throw new Error(`API unavailable. The saved scenario starts on ${saved.scenario.start.slice(0,10)}, runs for ${saved.scenario.days} days and uses ${saved.scenario.step_min}-minute steps.`)
   }
-  return {...parse(saved.timeseries,scenario),analysis:saved.analysis,offline:true,demo:false}
+  return {...parseObservations(saved.timeseries,scenario),analysis:saved.analysis,offline:true,demo:false}
 }

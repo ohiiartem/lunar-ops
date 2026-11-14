@@ -22,16 +22,20 @@ export function showMetrics(host: HTMLElement, data: Analysis) {
       ${items.length?`<ul>${items.map(window=>`<li>${formatWindow(window.from,window.to)}</li>`).join('')}</ul>`:'<p>No windows in this period.</p>'}</details>`).join('')}</div>`
 }
 
-export function showComparison(host: HTMLElement, data: Comparison, shift: number) {
+export function showComparison(host: HTMLElement, data: Comparison, context: number | readonly [string, string]) {
   const date = (time: string) => time.slice(0,10)+' UTC'
-  host.innerHTML = `<h3>Mission Shift · ${shift>0?'+':'−'}${Math.abs(shift)} days</h3>
+  const shift = typeof context === 'number' ? context : null
+  host.innerHTML = `${shift === null ? '' : `<h3>Mission Shift · ${shift>0?'+':'−'}${Math.abs(shift)} days</h3>`}
     <div class="comparison-grid">
-      <div><h4>Scenario A · ${date(data.a.start)}</h4><dl>${metricCards(data.a)}</dl></div>
-      <div><h4>Scenario B · ${date(data.b.start)}</h4><dl>${metricCards(data.b)}</dl></div>
+      <div><h4 data-scenario="a"></h4><dl>${metricCards(data.a)}</dl></div>
+      <div><h4 data-scenario="b"></h4><dl>${metricCards(data.b)}</dl></div>
       <div><h4>Difference (B − A)</h4><dl>${Object.entries(metricLabels).map(([key,label])=>{
         const value=data.delta[key as keyof typeof metricLabels]
         return `<div class="mission-metric"><dt>${label}</dt><dd>${value>0?'+':''}${num(value)} h</dd></div>`
       }).join('')}</dl></div>
-    </div><p id="shift-summary"></p>`
-  host.querySelector('#shift-summary')!.textContent=data.summary
+    </div><p class="comparison-summary"></p>`
+  const [nameA, nameB] = typeof context === 'number' ? ['Scenario A', 'Scenario B'] : context
+  host.querySelector('[data-scenario="a"]')!.textContent = `${nameA} · ${date(data.a.start)}`
+  host.querySelector('[data-scenario="b"]')!.textContent = `${nameB} · ${date(data.b.start)}`
+  host.querySelector('.comparison-summary')!.textContent = data.summary
 }
