@@ -1,0 +1,13 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# Large data files (see README, "Data" section, for download links)
+backend/data/*.tif
+backend/data/*.xyzi
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
