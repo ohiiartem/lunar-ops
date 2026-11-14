@@ -27,7 +27,7 @@
     <form id="scenario-form" class="panel scenario-controls">
       <label>Start date (UTC)<input type="date" id="scenario-start" required></label>
       <label>Days<input type="number" id="scenario-days" min="1" max="100" value="30" required></label>
-      <label>Step <select id="scenario-step"><option value="10">10 min</option><option value="20">20 min</option><option value="30" selected>30 min</option><option value="60">60 min</option><option value="120">120 min</option></select></label>
+      <label>Step <select id="scenario-step"><option value="10">10 min</option><option value="20">20 min</option><option value="60" selected>60 min</option><option value="120">120 min</option></select></label>
       <label class="check"><input id="scenario-terrain" type="checkbox" checked>Use terrain</label>
       <button type="submit" class="primary" id="analyze" disabled>Analyze</button>
       <p class="caption" id="coverage"></p>
@@ -166,7 +166,7 @@
         <button id="play-timeline" class="primary" aria-label="Play timeline" title="Play timeline" disabled><span class="playback-icon" aria-hidden="true"></span><span id="play-label" class="simple-only" aria-hidden="true">Play</span></button>
         <button id="previous-hour" aria-label="Previous observation">‹</button>
         <button id="next-hour" aria-label="Next observation">›</button>
-        <label>Speed <select id="play-speed"><option value="6">6 h/s</option><option value="24" selected>24 h/s</option><option value="48">48 h/s</option></select></label>
+        <label>Speed <select id="play-speed"><option value="6">6 h/s</option><option value="12" selected>12 h/s</option></select></label>
       </div>
       <div class="time-track">
         <label class="caption" for="hour"><span class="simple-only">Explore another time</span><span class="expert-only">Observation timeline</span> <output id="date"></output></label>

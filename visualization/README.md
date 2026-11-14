@@ -22,7 +22,7 @@ Deploying or mounting the build is handled by the server owner.
 
 The site picker and globe markers follow `GET /api/sites`. The default
 scenario starts on November 14, 2026 when the selected site covers that date.
-It uses 30 days and 30-minute steps. The form shows UTC coverage and applies the
+It uses 30 days and 60-minute steps. The form shows UTC coverage and applies the
 5,000-observation limit. Choosing a different site loads its default scenario.
 Choose **Analyze** after changing the start date, duration, step or horizon model.
 
