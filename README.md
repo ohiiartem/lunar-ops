@@ -8,7 +8,32 @@ Not a real mission planning tool.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install rasterio numpy matplotlib pyproj
+.venv/bin/pip install -r requirements.txt
+```
+
+## Run the server
+
+From the repository root:
+
+```bash
+LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
+```
+
+- Interactive API docs: http://127.0.0.1:8000/docs
+- If a `frontend/` folder exists, it is served at `/`.
+- **`LUNAR_OPS_DEMO=1` uses SYNTHETIC Sun/Earth positions** (made-up smooth curves), only so the page can be built
+  before the JPL Horizons tables are ready. Responses then carry `"data_source": "synthetic_demo"` and the UI must
+  show a warning. Real numbers come from `backend/data/horizons_<site_id>.csv` (columns
+  `t,sun_az,sun_alt,earth_az,earth_alt`), which always takes precedence over demo mode.
+- Without demo mode and without a table the API answers `503 data_unavailable`.
+
+## Tests
+
+```bash
+.venv/bin/python tests/test_horizon.py
+.venv/bin/python tests/test_combine.py
+.venv/bin/python tests/test_metrics.py
+.venv/bin/python tests/test_api.py
 ```
 
 ## Data (not stored in git)

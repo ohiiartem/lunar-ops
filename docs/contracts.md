@@ -22,7 +22,7 @@ All numbers in the examples are **illustrative**, not real results.
 | HTTP | code | When |
 |---|---|---|
 | 404 | `site_not_found` | `site_id` is not in `/api/sites` |
-| 422 | `bad_params` | missing field, wrong type, `days < 1`, `step_min` not in 5..120 |
+| 422 | `bad_params` | missing field, wrong type, `days` not in 1..366, `step_min` not in 5..120, or `start`/`step_min` do not fit the step grid of the stored table |
 | 422 | `date_out_of_range` | the period is outside the precomputed data range of the site |
 | 422 | `too_many_points` | `days * 1440 / step_min > 5000` |
 | 422 | `incompatible_scenarios` | `/api/compare`: `a.days != b.days` or `a.step_min != b.step_min` |
@@ -42,6 +42,7 @@ Response `200`:
       "lon": -137.49,
       "source": "Lunar Surface Data Book M2M-30044, table A2.1-1; LOLA 5 m DEM (PGDA)",
       "has_terrain": true,
+      "data_source": "jpl_horizons",
       "data_from": "2026-12-01T00:00:00Z",
       "data_to": "2027-01-31T00:00:00Z"
     }
@@ -50,7 +51,17 @@ Response `200`:
 ```
 
 `has_terrain` = a horizon profile exists for this site. `data_from`/`data_to` = range covered by the
-stored Horizons table. Sites with `has_terrain = false` are analysed with a flat horizon only.
+stored Horizons table (`null` when there is no data). Sites with `has_terrain = false` are analysed with a flat horizon only.
+
+`data_source`:
+
+| value | meaning |
+|---|---|
+| `jpl_horizons` | real table from JPL Horizons |
+| `synthetic_demo` | **made-up** Sun/Earth curves (server started with `LUNAR_OPS_DEMO=1`). **The UI must show a visible warning banner** and must not present these numbers as results |
+| `none` | no data, analysis endpoints answer `503 data_unavailable` |
+
+The same `data_source` value is returned in `/api/analyze` and `/api/timeseries` (and inside `a`/`b` of `/api/compare`).
 
 ## 3. `POST /api/analyze`
 
@@ -68,6 +79,7 @@ Response `200` (the `analyze()` result of `metrics.py` plus the echoed request):
   "start": "2026-12-01T00:00:00Z",
   "days": 30,
   "step_min": 30,
+  "data_source": "jpl_horizons",
   "terrain_used": true,
   "period_hours": 720.0,
   "light_hours": 539.5,
@@ -103,6 +115,7 @@ of every array belongs to `t[i]`:
 ```json
 {
   "site_id": "Site01",
+  "data_source": "jpl_horizons",
   "terrain_used": true,
   "t": ["2026-12-01T00:00:00Z", "2026-12-01T00:30:00Z"],
   "sun_alt": [1.52, 1.49],
@@ -113,10 +126,13 @@ of every array belongs to `t[i]`:
   "earth_az": [45.0, 45.4],
   "earth_horizon": [1.9, 1.9],
   "earth_visible": [true, true],
-  "both_visible": [true, true]
+  "both_visible": [true, true],
+  "horizon": {"azimuth_deg": [0.0, 1.0, "... 360 values"], "horizon_deg": [1.3, 1.4, "..."]}
 }
 ```
 
+- `horizon` is the full terrain silhouette (for the sky panorama). It is present only when `terrain_used` is true;
+  it is the same for every time step.
 - `sun_horizon` / `earth_horizon` = terrain angle at the body's azimuth (0 when `terrain_used` is false).
 - Sun is visible when `sun_alt + 0.27 > sun_horizon` (upper limb). Earth is visible when `earth_alt > earth_horizon`.
 - Typical size: 30 days at 30 min = 1440 points, about 115 KB. Server should enable gzip.
@@ -181,3 +197,7 @@ Requirements for the Horizons request (to confirm with the person doing Loader):
 - Loader parses the text between `$$SOE` and `$$EOE` and strips the solar/lunar presence flags
   (`*`, `i`, ...) next to the time.
 - Tables are stored on the server (`backend/data/`); the app never calls Horizons at request time.
+- File name and format the server reads: `backend/data/horizons_<site_id>.csv`
+  (e.g. `horizons_Site01.csv`), header `t,sun_az,sun_alt,earth_az,earth_alt`, `t` as ISO 8601 UTC with `Z`,
+  one uniform time step (the API step must be a multiple of it). If this file exists it always wins over demo data.
+  The Loader's job is to produce exactly this file from the raw Horizons text.
