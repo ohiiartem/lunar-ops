@@ -13,7 +13,8 @@ MAX_POINTS = 5000
 
 @lru_cache(maxsize=1)
 def _sites():
-    return json.loads((ephemeris.DATA_DIR / "sites.json").read_text())
+    """Sites shown to the API. An entry with "enabled": false stays in sites.json but is hidden (no data yet)."""
+    return [s for s in json.loads((ephemeris.DATA_DIR / "sites.json").read_text()) if s.get("enabled", True)]
 
 
 def get_site(site_id):

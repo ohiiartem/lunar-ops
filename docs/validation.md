@@ -63,7 +63,24 @@ Effect on the metrics (30 days from 2026-12-01, step 30 min, `POST /api/analyze`
 | Site11 | 720.0 | 635.5 | 0.0 h | 51.0 h |
 | Site23 | 463.5 | 361.0 | 256.5 h | 164.5 h |
 
-### 1.4 Unit tests (`tests/`)
+### 1.4 Terrain horizon: two implementations compared
+
+The web page's author wrote a separate horizon-profile code (`visualization/scripts/prepare_lola.py`: rays up to
+23 km, nearest pixel, 2 m mast) independently of ours (`backend/calc/horizon.py`: bilinear sampling, rays limited to the
+tile, 2 m observer). Both use the same LOLA DEM, so this checks the code, not the DEM. Difference of the horizon angle,
+his minus ours, over 360 azimuths:
+
+| Site | Mean | RMS | Largest | Horizon range (his / ours) |
+|---|---|---|---|---|
+| Site01 | 0.11 deg | 0.14 deg | 0.58 deg | -4.54..2.47 / -4.62..2.21 |
+| Site11 | 0.07 deg | 0.12 deg | 0.81 deg | -5.76..3.26 / -5.86..3.16 |
+| Site23 | -0.01 deg | 0.05 deg | 0.32 deg | -4.57..5.30 / -4.52..5.26 |
+| Site06 | 0.28 deg | 0.48 deg | 1.80 deg | -14.16..13.73 / -14.67..12.90 |
+
+The profiles agree in shape and range; the remaining differences come from sampling (nearest pixel vs bilinear),
+ray length and the rounded site coordinates. Site06 has the steepest terrain and the largest difference.
+
+### 1.5 Unit tests (`tests/`)
 
 - `test_horizon.py`: a synthetic mound placed by real lat/lon offsets to the N/E/S/W gives the horizon at the right
   azimuth (guards against a mirrored or rotated compass); flat terrain gives about 0 deg; periodic interpolation.
@@ -76,9 +93,9 @@ Effect on the metrics (30 days from 2026-12-01, step 30 min, `POST /api/analyze`
    0.001 deg, so a large height offset in the tables is very unlikely, but the request itself was not inspected.
 2. **Sample size of the cross-check:** 4 times per site (24 values per site). Smoothness (1.1) covers the rest of
    the 13249 rows. Site06 is not covered.
-3. **Terrain:** 90% of pixels of the 5 m LOLA polar DEMs are interpolated (Barker et al. 2021); the observer height
+3. **Terrain (DEM itself):** 90% of pixels of the 5 m LOLA polar DEMs are interpolated (Barker et al. 2021); the observer height
    above the ground is an assumption (2 m); rays are limited to the 16 x 16 km tile, so mountains outside it are not
-   seen. The horizon has not been compared with an independent tool (for example NASA Moon Trek / LOLA products).
+   seen. The horizon was compared only with a second implementation on the same DEM (1.4), not with another data source (for example NASA Moon Trek / LOLA products).
 4. **Site06** has no Horizons table yet.
 5. **Earth visibility is geometric** (centre of Earth above the terrain horizon). It is not link quality.
 6. **Sun visibility** uses the upper limb (0.27 deg), no refraction (the Moon has no atmosphere).

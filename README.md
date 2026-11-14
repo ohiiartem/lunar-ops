@@ -11,6 +11,26 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+## Web page (one-time build)
+
+The page lives in `visualization/` (Vite + TypeScript + three.js). Needs Node.js 22.12 or newer.
+`visualization/dist` is not stored in git, so build it once (and after changing the page):
+
+```bash
+cd visualization
+npm ci
+npm run build
+```
+
+Then start the server below and open http://127.0.0.1:8000/. For page development use `npm run dev`
+in `visualization/` (http://localhost:5173/, `/api` is proxied to the server on port 8000).
+Terrain assets of the page are made from the LOLA tiles in `backend/data/`:
+
+```bash
+.venv/bin/python visualization/scripts/prepare_lola.py R23 backend/data/Site23_final_adj_5mpp_surf.tif /tmp/lola/R23
+.venv/bin/python visualization/scripts/export_data.py /tmp/lola     # exports every site folder found in /tmp/lola
+```
+
 ## Run the server
 
 From the repository root:
@@ -36,6 +56,20 @@ LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
 .venv/bin/python tests/test_metrics.py
 .venv/bin/python tests/test_api.py
 ```
+
+## Sites
+
+| Id | Name | Latitude | Longitude | Status |
+|---|---|---|---|---|
+| Site01 | R01 · Connecting ridge | -89.46316 | -137.48955 | active |
+| Site11 | R11 · de Gerlache rim | -88.68342 | -67.9321 | active |
+| Site23 | R23 · Malapert massif | -85.99478 | -0.23578 | active |
+| Site06 | R06 · Nobile rim 1 | -85.4381 | 37.36667 | **hidden**: no JPL Horizons table yet |
+
+Site06 is hidden, not removed: it stays in `backend/data/sites.json` with `"enabled": false`, and its horizon profile
+(`horizon_Site06.json`), LOLA tile and web terrain assets (`visualization/public/data/R06`, `visualization/public/dem`)
+are kept. To bring it back: put `horizons_Site06.csv` into `backend/data/` (`scripts/import_horizons.py`), set `enabled` to
+`true` (or delete the field), add the site to `visualization/public/data/sites.json` (offline catalogue), rebuild the page.
 
 ## Data (not stored in git)
 

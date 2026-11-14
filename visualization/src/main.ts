@@ -4,6 +4,7 @@ import { createSky } from './sky-view'
 import { assetFolder, dayMs, loadScenario, loadSites, requestAPI } from './sky-data'
 import type { Comparison, Scenario } from './sky-data'
 import { showComparison, showMetrics } from './mission'
+import { countdownHtml, describe } from './countdown'
 import { mapNavigation } from './map-navigation'
 import { colors, directionAt, explainVisibility, gridDirection, lunarDirection, names, readJson, targets } from './model'
 import type { Metadata, Observations, Site } from './model'
@@ -220,6 +221,15 @@ function render() {
     renderAnalysis(observations,current.analysis,selectHour)
     analyzed=observations
   }
+  const step = scenario.step_min
+  const countdowns = {
+    Sun: describe(observations.Sun.map(row=>row[3]),i,step,
+      {ending:'Sunset',starting:'Sunrise',stays:'Sun stays visible',stayed:'Sun stays below the horizon'}),
+    Earth: describe(observations.Earth.map(row=>row[3]),i,step,
+      {ending:'Earthset · geometric visibility ends',starting:'Earthrise · geometric visibility starts',stays:'Earth stays visible',stayed:'Earth stays hidden'}),
+    both: describe(observations.bothVisible,i,step,
+      {ending:'Sun and Earth together end',starting:'Sun and Earth together start',stays:'Sun and Earth stay visible together',stayed:'Sun and Earth are not visible together'}),
+  }
   element('comparison').innerHTML = targets.map(target => {
     const sample = observations[target][i]
     const [azimuth,elevation,horizon,visible] = sample
@@ -231,13 +241,17 @@ function render() {
         <h3 style="color:${colors[target]}">${label}</h3>
         <strong class="${visible?'yes':'no'}">${state}</strong>
         <p>${explainVisibility(target,visible,terrainUsed)}</p>
+        <div class="countdown">${countdownHtml(countdowns[target])}</div>
         </div>`
     }
     return `<div class="object">
       <div class="body-head"><h3 style="color:${colors[target]}">${names[target]}</h3><small>AZ ${azimuth.toFixed(2)}° · EL ${elevation.toFixed(2)}°</small></div>
       <div class="row"><span>${terrainUsed?'Terrain':'Level'} horizon · ${horizon.toFixed(2)}°</span>${visibility(visible)}</div>
+      <div class="countdown">${countdownHtml(countdowns[target])}</div>
       </div>`
-  }).join('') + `<p class="caption">Sun and Earth together · ${observations.bothVisible[i]?'Visible':'Unavailable at this time'}</p>`
+  }).join('') + `<p class="caption">Sun and Earth together · ${observations.bothVisible[i]?'Visible':'Unavailable at this time'}</p>
+    <div class="caption countdown">${countdownHtml(countdowns.both)}</div>
+    <p class="caption">Countdowns are counted from the observation time, from the ${step}-minute samples (accurate to one step).</p>`
   if (settings.dataset.mode==='system') renderSystemReadout()
   drawDirections()
 }
