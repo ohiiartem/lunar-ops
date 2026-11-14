@@ -1,0 +1,9 @@
+# LOLA tiles are large (41-71 MB each): download from PGDA, do not commit
+*.tif
+*.tiff
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+# personal planning notes
+notes/

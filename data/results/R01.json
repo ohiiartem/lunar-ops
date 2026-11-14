@@ -1,0 +1,97 @@
+{
+ "id": "R01",
+ "name": "Connecting Ridge",
+ "lat": -89.4632,
+ "lon": -137.49,
+ "terrain_available": true,
+ "site_height_m": 1944.77,
+ "profile_coverage_m": [
+  7995.0,
+  11215.0
+ ],
+ "span_utc": [
+  "2026-11-14T00:00:00Z",
+  "2026-11-15T00:00:00Z"
+ ],
+ "horizontal_plane": {
+  "terrain": false,
+  "earth_reference": "centre",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 24.166666666666668,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 24.166666666666668,
+    "open_start": true,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "horizontal_plane_earth_limb": {
+  "terrain": false,
+  "earth_reference": "upper limb",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 24.166666666666668,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 24.166666666666668,
+    "open_start": true,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "terrain": {
+  "terrain": true,
+  "earth_reference": "centre",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 24.166666666666668,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 24.166666666666668,
+    "open_start": true,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "terrain_earth_limb": {
+  "terrain": true,
+  "earth_reference": "upper limb",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 24.166666666666668,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 24.166666666666668,
+    "open_start": true,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "note": "horizontal_plane = horizon at 0 deg elevation (local horizontal), not the sphere limb; terrain profile is limited to the DEM tile, so it can only be too low."
+}

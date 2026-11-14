@@ -1,0 +1,129 @@
+{
+ "id": "R23",
+ "name": "Malapert Massif",
+ "lat": -85.9948,
+ "lon": -0.23578,
+ "terrain_available": true,
+ "site_height_m": 4783.79,
+ "profile_coverage_m": [
+  10495.0,
+  14785.0
+ ],
+ "span_utc": [
+  "2026-11-14T00:00:00Z",
+  "2026-11-15T00:00:00Z"
+ ],
+ "horizontal_plane": {
+  "terrain": false,
+  "earth_reference": "centre",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 4.833333333333333,
+  "earth_hours": 9.5,
+  "joint_hours": 4.833333333333333,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T19:20:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 4.833333333333333,
+    "open_start": false,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [
+   {
+    "start": "2026-11-14T14:40:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 9.5,
+    "open_start": false,
+    "open_end": true
+   }
+  ],
+  "joint_windows": [
+   {
+    "start": "2026-11-14T19:20:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 4.833333333333333,
+    "open_start": false,
+    "open_end": true
+   }
+  ]
+ },
+ "horizontal_plane_earth_limb": {
+  "terrain": false,
+  "earth_reference": "upper limb",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 4.833333333333333,
+  "earth_hours": 24.166666666666668,
+  "joint_hours": 4.833333333333333,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T19:20:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 4.833333333333333,
+    "open_start": false,
+    "open_end": true
+   }
+  ],
+  "earth_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 24.166666666666668,
+    "open_start": true,
+    "open_end": true
+   }
+  ],
+  "joint_windows": [
+   {
+    "start": "2026-11-14T19:20:00Z",
+    "end": "2026-11-15T00:10:00Z",
+    "hours": 4.833333333333333,
+    "open_start": false,
+    "open_end": true
+   }
+  ]
+ },
+ "terrain": {
+  "terrain": true,
+  "earth_reference": "centre",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 14.666666666666666,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-14T14:40:00Z",
+    "hours": 14.666666666666666,
+    "open_start": true,
+    "open_end": false
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "terrain_earth_limb": {
+  "terrain": true,
+  "earth_reference": "upper limb",
+  "step_minutes": 10.0,
+  "span_hours": 24.166666666666668,
+  "sun_hours": 14.666666666666666,
+  "earth_hours": 0.0,
+  "joint_hours": 0.0,
+  "sun_windows": [
+   {
+    "start": "2026-11-14T00:00:00Z",
+    "end": "2026-11-14T14:40:00Z",
+    "hours": 14.666666666666666,
+    "open_start": true,
+    "open_end": false
+   }
+  ],
+  "earth_windows": [],
+  "joint_windows": []
+ },
+ "note": "horizontal_plane = horizon at 0 deg elevation (local horizontal), not the sphere limb; terrain profile is limited to the DEM tile, so it can only be too low."
+}

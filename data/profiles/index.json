@@ -1,0 +1,23 @@
+{
+ "R01": {
+  "name": "Connecting Ridge",
+  "terrain": true,
+  "profile": "R01.json",
+  "coverage_min_m": 7995.0,
+  "coverage_max_m": 11215.0
+ },
+ "R11": {
+  "name": "de Gerlache Rim 1",
+  "terrain": true,
+  "profile": "R11.json",
+  "coverage_min_m": 7995.0,
+  "coverage_max_m": 11295.0
+ },
+ "R23": {
+  "name": "Malapert Massif",
+  "terrain": true,
+  "profile": "R23.json",
+  "coverage_min_m": 10495.0,
+  "coverage_max_m": 14785.0
+ }
+}
