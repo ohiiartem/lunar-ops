@@ -336,8 +336,18 @@ footer { margin:10px 0 0; }
 #shift-status:empty { display:none; }
 #shift-status { color:var(--accent); }
 #shift-results:not(:empty) { margin-top:14px; }
-.comparison-grid dl { display:grid; gap:5px; }
-.comparison-grid h4 { margin:0; }
+#shift-results,#site-compare-results { container-type:inline-size; }
+.comparison-grid { grid-template-columns:minmax(0,1fr); }
+.comparison-grid dl { display:grid; gap:5px; margin:0; }
+.comparison-grid h4 { margin:0 0 6px; overflow-wrap:anywhere; }
+@container (min-width:570px) {
+  .comparison-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .comparison-grid > div,.comparison-grid dl {
+    display:grid; grid-template-rows:subgrid; min-width:0;
+  }
+  .comparison-grid > div { grid-row:span 5; }
+  .comparison-grid dl { grid-row:span 4; gap:inherit; }
+}
 .site-comparison { margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
 .site-compare-panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr)); gap:12px; margin-top:10px; }
 .site-compare-panels fieldset { display:grid; gap:8px; min-width:0; margin:0; padding:12px; border:1px solid var(--line); border-radius:9px; }
