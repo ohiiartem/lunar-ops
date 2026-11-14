@@ -32,6 +32,40 @@ class BadGrid(Exception):
     pass
 
 
+class BadTable(Exception):
+    """A horizons_<site>.csv exists but its content is not usable (message says why)."""
+
+
+COLUMNS = ("sun_az", "sun_alt", "earth_az", "earth_alt")
+
+
+def validate_table(t, cols):
+    """Checks a parsed table (t = datetime64[s] array, cols = dict of float arrays). Raises BadTable."""
+    if len(t) < 2:
+        raise BadTable("table has fewer than 2 rows")
+    for k in COLUMNS:
+        bad = ~np.isfinite(cols[k])
+        if bad.any():
+            raise BadTable(f"column {k}: non-numeric or empty value at row {int(np.argmax(bad)) + 2}")
+    d = np.diff(t) / np.timedelta64(1, "s")
+    if (d <= 0).any():
+        i = int(np.argmax(d <= 0))
+        raise BadTable(f"time is not strictly increasing at row {i + 3} ({t[i + 1]} after {t[i]})")
+    if (d != d[0]).any():
+        i = int(np.argmax(d != d[0]))
+        raise BadTable(f"time step is not uniform: {int(d[0])} s at start, {int(d[i])} s at row {i + 3} (gap or mixed step)")
+    if d[0] < 60 or d[0] > 86400:
+        raise BadTable(f"time step {int(d[0])} s is outside 1 min .. 1 day")
+    for k in ("sun_az", "earth_az"):
+        v = cols[k]
+        if ((v < 0) | (v > 360)).any():
+            raise BadTable(f"column {k}: azimuth outside 0..360 at row {int(np.argmax((v < 0) | (v > 360))) + 2}")
+    for k in ("sun_alt", "earth_alt"):
+        v = cols[k]
+        if ((v < -90) | (v > 90)).any():
+            raise BadTable(f"column {k}: altitude outside -90..90 at row {int(np.argmax((v < -90) | (v > 90))) + 2}")
+
+
 def demo_enabled():
     return os.environ.get("LUNAR_OPS_DEMO") == "1"
 
@@ -43,10 +77,39 @@ def _csv_path(site_id):
 @lru_cache(maxsize=8)
 def _load_csv(path):
     with open(path, newline="") as f:
-        rows = list(csv.DictReader(f))
-    t = np.array([r["t"].rstrip("Z") for r in rows], dtype="datetime64[s]")
-    cols = {k: np.array([float(r[k]) for r in rows]) for k in ("sun_az", "sun_alt", "earth_az", "earth_alt")}
+        reader = csv.DictReader(f)
+        missing = [c for c in ("t",) + COLUMNS if c not in (reader.fieldnames or [])]
+        if missing:
+            raise BadTable(f"missing column(s): {', '.join(missing)}; expected header t,sun_az,sun_alt,earth_az,earth_alt")
+        rows = list(reader)
+    try:
+        t = np.array([r["t"].strip().rstrip("Z") for r in rows], dtype="datetime64[s]")
+    except ValueError:
+        raise BadTable("column t: not ISO 8601 (expected like 2026-12-01T00:00:00Z)")
+    cols = {}
+    for k in COLUMNS:
+        vals = []
+        for r in rows:
+            try:
+                vals.append(float(r[k]))
+            except (TypeError, ValueError):
+                vals.append(float("nan"))
+        cols[k] = np.array(vals)
+    validate_table(t, cols)
     return t, cols
+
+
+def table_info(site_id):
+    """Describes the real table of a site without raising: {'present', 'valid', 'error', 'from', 'to', 'step_min', 'rows'}."""
+    path = _csv_path(site_id)
+    if not path.exists():
+        return {"present": False, "valid": False, "error": None, "from": None, "to": None, "step_min": None, "rows": 0}
+    try:
+        t, _ = _load_csv(path)
+    except BadTable as e:
+        return {"present": True, "valid": False, "error": str(e), "from": None, "to": None, "step_min": None, "rows": 0}
+    return {"present": True, "valid": True, "error": None, "from": _iso(t[0].astype(datetime)),
+            "to": _iso(t[-1].astype(datetime)), "step_min": int((t[1] - t[0]) / np.timedelta64(60, "s")), "rows": len(t)}
 
 
 def data_source(site_id):

@@ -10,6 +10,11 @@ router = APIRouter(prefix="/api")
 DELTA_KEYS = ("light_hours", "earth_visible_hours", "both_hours", "longest_darkness_hours")
 
 
+@router.get("/health")
+def get_health():
+    return service.health()
+
+
 @router.get("/sites")
 def get_sites():
     return service.list_sites()

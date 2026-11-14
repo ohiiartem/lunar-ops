@@ -27,6 +27,7 @@ All numbers in the examples are **illustrative**, not real results.
 | 422 | `too_many_points` | `days * 1440 / step_min > 5000` |
 | 422 | `incompatible_scenarios` | `/api/compare`: `a.days != b.days` or `a.step_min != b.step_min` |
 | 503 | `data_unavailable` | an ephemeris table or horizon profile file is missing on the server |
+| 503 | `data_invalid` | `horizons_<site>.csv` exists but is unusable (gap, non-uniform step, azimuth outside 0..360, bad number, missing column); the message says what and where. Such a site is listed with `data_source: "none"` |
 
 ## 2. `GET /api/sites`
 
@@ -62,6 +63,19 @@ stored Horizons table (`null` when there is no data). Sites with `has_terrain = 
 | `none` | no data, analysis endpoints answer `503 data_unavailable` |
 
 The same `data_source` value is returned in `/api/analyze` and `/api/timeseries` (and inside `a`/`b` of `/api/compare`).
+
+### `GET /api/health`
+
+For debugging, not for the UI. Response `200`:
+
+```json
+{"status": "ok", "version": "0.1.0", "mode": "demo", "demo_enabled": true, "problems": [],
+ "sites": [{"id": "Site01", "terrain_profile": true, "data_source": "synthetic_demo",
+            "table": {"present": false, "valid": false, "error": null, "from": null, "to": null, "step_min": null, "rows": 0}}]}
+```
+
+`mode`: `real` (all sites have a valid table), `mixed`, `demo`, `no_data`. `status` is `degraded` when `problems`
+is not empty (an unusable table or a missing horizon profile).
 
 ## 3. `POST /api/analyze`
 
@@ -200,4 +214,6 @@ Requirements for the Horizons request (to confirm with the person doing Loader):
 - File name and format the server reads: `backend/data/horizons_<site_id>.csv`
   (e.g. `horizons_Site01.csv`), header `t,sun_az,sun_alt,earth_az,earth_alt`, `t` as ISO 8601 UTC with `Z`,
   one uniform time step (the API step must be a multiple of it). If this file exists it always wins over demo data.
-  The Loader's job is to produce exactly this file from the raw Horizons text.
+  The Loader's job is to produce exactly this file from the raw Horizons text:
+  `.venv/bin/python scripts/import_horizons.py Site01 --sun sun.csv --earth earth.csv` (reads columns `Time`,
+  `Azimuth_deg`, `Elevation_deg`, validates, writes the file). The server validates the same rules on load.

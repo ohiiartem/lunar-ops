@@ -32,11 +32,15 @@ def _profile(filename):
 def list_sites():
     out = []
     for s in _sites():
-        rng = ephemeris.data_range(s["id"])
+        try:
+            rng = ephemeris.data_range(s["id"])
+            source = ephemeris.data_source(s["id"])
+        except ephemeris.BadTable:  # unusable table: shown as "no data", the reason is in /api/health
+            rng, source = None, "none"
         out.append({
             "id": s["id"], "name": s["name"], "lat": s["lat"], "lon": s["lon"], "source": s["source"],
             "has_terrain": _profile(s["horizon_file"]) is not None,
-            "data_source": ephemeris.data_source(s["id"]),
+            "data_source": source,
             "data_from": rng[0].strftime("%Y-%m-%dT%H:%M:%SZ") if rng else None,
             "data_to": rng[1].strftime("%Y-%m-%dT%H:%M:%SZ") if rng else None,
         })
@@ -48,7 +52,10 @@ def run_scenario(sc):
     site = get_site(sc.site_id)
     if sc.days * 1440 / sc.step_min > MAX_POINTS:
         raise ApiError(422, "too_many_points", f"More than {MAX_POINTS} points; use a larger step_min or fewer days")
-    rng = ephemeris.data_range(sc.site_id)
+    try:
+        rng = ephemeris.data_range(sc.site_id)
+    except ephemeris.BadTable as e:
+        raise ApiError(503, "data_invalid", f"Ephemeris table for {sc.site_id} is unusable: {e}")
     if rng is None:
         raise ApiError(503, "data_unavailable", f"No ephemeris data for {sc.site_id}")
     if sc.start < rng[0] or sc.start + timedelta(days=sc.days) > rng[1]:
@@ -82,3 +89,25 @@ def timeseries(sc):
             "horizon_deg": [round(x, 2) for x in profile["horizon_deg"]],
         }
     return out
+
+
+VERSION = "0.1.0"
+
+
+def health():
+    """Server state for debugging: mode, and per site whether a valid table and a horizon profile exist."""
+    sites = []
+    for s in _sites():
+        info = ephemeris.table_info(s["id"])
+        sites.append({
+            "id": s["id"],
+            "terrain_profile": _profile(s["horizon_file"]) is not None,
+            "table": info,
+            "data_source": "jpl_horizons" if info["valid"] else ("synthetic_demo" if ephemeris.demo_enabled() else "none"),
+        })
+    real = sum(1 for x in sites if x["table"]["valid"])
+    mode = "real" if real == len(sites) else "mixed" if real else "demo" if ephemeris.demo_enabled() else "no_data"
+    problems = [f"{x['id']}: {x['table']['error']}" for x in sites if x["table"]["present"] and not x["table"]["valid"]]
+    problems += [f"{x['id']}: no horizon profile" for x in sites if not x["terrain_profile"]]
+    return {"status": "ok" if not problems else "degraded", "version": VERSION, "mode": mode,
+            "demo_enabled": ephemeris.demo_enabled(), "problems": problems, "sites": sites}

@@ -25,6 +25,7 @@ LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
   before the JPL Horizons tables are ready. Responses then carry `"data_source": "synthetic_demo"` and the UI must
   show a warning. Real numbers come from `backend/data/horizons_<site_id>.csv` (columns
   `t,sun_az,sun_alt,earth_az,earth_alt`), which always takes precedence over demo mode.
+- `GET /api/health` shows the mode and, per site, whether a valid table and horizon profile exist.
 - Without demo mode and without a table the API answers `503 data_unavailable`.
 
 ## Tests
@@ -60,6 +61,7 @@ doi:10.1016/j.pss.2020.105119; site numbering from Mazarico et al. 2011, Icarus 
 .venv/bin/python scripts/inspect_dem.py            # prints DEM metadata, writes docs/site01_relief.png
 .venv/bin/python scripts/build_site.py Site23      # horizon profile + sites.json entry + docs/Site23_horizon.png
 .venv/bin/python scripts/build_dem_web.py          # small terrain grids for the 3D map -> frontend/dem/
+.venv/bin/python scripts/import_horizons.py Site01 --sun sun.csv --earth earth.csv   # JPL tables -> backend/data/horizons_Site01.csv
 ```
 
 ## Layout

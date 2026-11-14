@@ -18,6 +18,15 @@ from backend.api import service  # noqa: E402
 from backend.calc import ephemeris  # noqa: E402
 from backend.main import app  # noqa: E402
 
+# Tests run on a private copy of the sites and horizon profiles, WITHOUT the real horizons_*.csv tables
+# (so results do not depend on which JPL tables are in backend/data/).
+_TEST_DIR = Path(tempfile.mkdtemp())
+for _f in (ephemeris.DATA_DIR).glob("*.json"):
+    shutil.copy(_f, _TEST_DIR / _f.name)
+ephemeris.DATA_DIR = _TEST_DIR
+service._sites.cache_clear()
+service._profile.cache_clear()
+
 client = TestClient(app)
 BODY = {"site_id": "Site01", "start": "2026-12-01T00:00:00Z", "days": 30, "step_min": 30}
 
@@ -123,6 +132,79 @@ def test_real_table_is_preferred_over_demo():
         service._sites.cache_clear()
         service._profile.cache_clear()
         shutil.rmtree(tmp)
+
+
+def _with_table(rows_text):
+    """Context: a temp data dir with sites/profile and a horizons_Site01.csv holding rows_text."""
+    old_dir = ephemeris.DATA_DIR
+    tmp = Path(tempfile.mkdtemp())
+    for name in ("sites.json", "horizon_Site01.json"):
+        shutil.copy(old_dir / name, tmp / name)
+    (tmp / "horizons_Site01.csv").write_text(rows_text)
+    ephemeris.DATA_DIR = tmp
+    service._sites.cache_clear()
+    service._profile.cache_clear()
+    return old_dir, tmp
+
+
+def _restore(old_dir, tmp):
+    ephemeris.DATA_DIR = old_dir
+    service._sites.cache_clear()
+    service._profile.cache_clear()
+    shutil.rmtree(tmp)
+
+
+def _table(mutate=None, n=48):
+    lines = [f"{(datetime(2026, 12, 1) + timedelta(minutes=30 * i)):%Y-%m-%dT%H:%M:%SZ},100,2.0,50,5.0" for i in range(n)]
+    if mutate:
+        mutate(lines)
+    return "\n".join(["t,sun_az,sun_alt,earth_az,earth_alt"] + lines)
+
+
+def test_bad_tables_give_clear_errors():
+    demo(True)
+    cases = {
+        "not uniform": lambda L: L.pop(10),
+        "azimuth": lambda L: L.__setitem__(3, L[3].replace(",100,", ",400,")),
+        "not strictly increasing": lambda L: L.__setitem__(5, L[4]),
+        "non-numeric": lambda L: L.__setitem__(2, L[2].replace(",2.0,", ",abc,")),
+    }
+    for word, mutate in cases.items():
+        old, tmp = _with_table(_table(mutate))
+        try:
+            r = client.post("/api/analyze", json={**BODY, "days": 1, "use_terrain": False})
+            err(r, 503, "data_invalid")
+            assert word in r.json()["error"]["message"], (word, r.text)
+            sites = client.get("/api/sites").json()["sites"]
+            assert sites[0]["data_source"] == "none"  # never silently shown as real data
+            h = client.get("/api/health").json()
+            assert h["status"] == "degraded" and not h["sites"][0]["table"]["valid"], h
+        finally:
+            _restore(old, tmp)
+    old, tmp = _with_table("t,sun_az\n2026-12-01T00:00:00Z,1")
+    try:
+        r = client.post("/api/analyze", json={**BODY, "days": 1})
+        err(r, 503, "data_invalid")
+        assert "missing column" in r.json()["error"]["message"]
+    finally:
+        _restore(old, tmp)
+
+
+def test_health():
+    demo(False)
+    h = client.get("/api/health").json()
+    assert h["mode"] == "no_data" and [s["id"] for s in h["sites"]][0] == "Site01"
+    assert all(s["terrain_profile"] for s in h["sites"]), h
+    demo(True)
+    assert client.get("/api/health").json()["mode"] == "demo"
+    old, tmp = _with_table(_table())
+    try:
+        h = client.get("/api/health").json()
+        t = h["sites"][0]["table"]
+        assert t["valid"] and t["step_min"] == 30 and t["rows"] == 48, h
+        assert h["mode"] == "mixed" and h["sites"][0]["data_source"] == "jpl_horizons"
+    finally:
+        _restore(old, tmp)
 
 
 if __name__ == "__main__":
