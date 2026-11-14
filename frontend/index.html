@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lunar OPS - landing site scenario comparison</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="simple">
+
+  <div id="demo-banner" class="demo-banner" role="alert" hidden>
+    <strong>DEMO DATA:</strong> Sun/Earth positions are synthetic, not JPL Horizons results.
+  </div>
+
+  <header class="top">
+    <div>
+      <h1>Lunar OPS</h1>
+      <p class="tagline">Compare "site + date" scenarios at the Moon's south pole: potential sunlight and geometric Earth visibility.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Detail level">
+      <button type="button" id="level-simple" aria-pressed="true">Simple</button>
+      <button type="button" id="level-expert" aria-pressed="false">Expert</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <form id="controls" class="panel controls" autocomplete="off">
+      <fieldset class="scn scn-a">
+        <legend><span class="badge badge-a">A</span> Scenario</legend>
+        <label>Site
+          <select id="a-site"></select>
+        </label>
+        <label>Start date (UTC)
+          <input type="date" id="a-date" required>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="a-terrain" checked> Use real terrain
+        </label>
+      </fieldset>
+
+      <fieldset class="scn scn-b" id="b-fields" hidden>
+        <legend><span class="badge badge-b">B</span> Scenario</legend>
+        <label>Site
+          <select id="b-site"></select>
+        </label>
+        <label>Start date (UTC)
+          <input type="date" id="b-date">
+        </label>
+        <label class="check">
+          <input type="checkbox" id="b-terrain" checked> Use real terrain
+        </label>
+      </fieldset>
+
+      <fieldset class="scn">
+        <legend>Period</legend>
+        <label>Days
+          <input type="number" id="days" min="1" max="366" step="1" value="30" required>
+        </label>
+        <label>Step (minutes)
+          <select id="step">
+            <option>5</option><option>10</option><option>15</option>
+            <option selected>30</option><option>60</option><option>120</option>
+          </select>
+        </label>
+        <p id="step-hint" class="hint" hidden></p>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" id="analyze" class="primary">Analyze</button>
+        <label class="check">
+          <input type="checkbox" id="compare-toggle"> Compare two scenarios (A vs B)
+        </label>
+        <div class="shift">
+          <span>Mission Shift - what if the mission slips?</span>
+          <div class="shift-buttons">
+            <button type="button" data-shift="1">+1 day</button>
+            <button type="button" data-shift="5">+5 days</button>
+            <button type="button" data-shift="10">+10 days</button>
+          </div>
+        </div>
+      </div>
+      <p id="site-info" class="hint site-info"></p>
+    </form>
+
+    <div id="error" class="error" role="alert" hidden></div>
+    <div id="loading" class="loading" role="status" hidden><span class="spinner" aria-hidden="true"></span> Calculating…</div>
+    <div id="empty" class="empty">Pick a site and a start date, then press <strong>Analyze</strong>.</div>
+
+    <!-- Results -->
+    <div id="results" hidden>
+      <div id="summary"></div>
+
+      <section class="panel stage">
+        <div class="stage-head">
+          <div class="tabs" role="tablist" aria-label="View">
+            <button type="button" role="tab" data-view="sky" aria-selected="true">2D Sky</button>
+            <button type="button" role="tab" data-view="surface" aria-selected="false">Surface view</button>
+            <button type="button" role="tab" data-view="map" aria-selected="false">3D site map</button>
+          </div>
+          <div class="view-key" id="view-key" hidden>
+            <span>Scenario shown:</span>
+            <div class="seg" role="group" aria-label="Scenario shown in this view">
+              <button type="button" data-key="a" aria-pressed="true">A</button>
+              <button type="button" data-key="b" aria-pressed="false">B</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-sky">
+          <p class="lead">The whole horizon, unrolled. The grey shape is <span class="term" data-term="horizon">terrain</span> that blocks the sky. Solid marks: the body is visible. Hollow marks: it is hidden.</p>
+          <div id="panoramas"></div>
+          <ul class="legend" id="sky-legend"></ul>
+        </div>
+
+        <div id="view-surface" hidden>
+          <p class="lead">Standing on the site and looking around. Drag left or right to turn. The Sun and Earth are drawn at their calculated <span class="term" data-term="azimuth">azimuth</span> and <span class="term" data-term="altitude">altitude</span>.</p>
+          <div class="canvas-wrap">
+            <canvas id="surface" tabindex="0" aria-label="View from the surface: horizon silhouette with the Sun and Earth. Use the left and right arrow keys to turn."></canvas>
+          </div>
+          <div class="view-buttons">
+            <button type="button" id="face-sun">Face the Sun</button>
+            <button type="button" id="face-earth">Face Earth</button>
+          </div>
+          <p class="hint" id="surface-note"></p>
+        </div>
+
+        <div id="view-map" hidden>
+          <p class="lead">The terrain around the site, lit from the calculated direction of the Sun. Drag to rotate, scroll to zoom. Click the site marker to stand on the surface.</p>
+          <div class="canvas-wrap">
+            <div id="map3d"></div>
+            <div class="overlay-note" id="map-status"></div>
+          </div>
+          <ul class="legend">
+            <li><svg width="18" height="18"><circle cx="9" cy="9" r="6" fill="#ffffff"/></svg> Site</li>
+            <li><svg width="26" height="18"><line x1="1" y1="9" x2="25" y2="9" stroke="#ffb000" stroke-width="4"/></svg> Direction to the Sun</li>
+            <li><svg width="26" height="18"><line x1="1" y1="9" x2="25" y2="9" stroke="#56b4e9" stroke-width="4"/></svg> Direction to Earth</li>
+            <li><svg width="26" height="18"><line x1="1" y1="9" x2="25" y2="9" stroke="#ffffff" stroke-width="2"/></svg> North</li>
+          </ul>
+          <p class="hint" id="map-note"></p>
+        </div>
+
+        <div class="timectl">
+          <div class="buttons">
+            <button type="button" id="play">&#9654; Play</button>
+            <label>Speed
+              <select id="speed">
+                <option value="2">2 hours / s</option>
+                <option value="12">12 hours / s</option>
+                <option value="24" selected>1 day / s</option>
+                <option value="120">5 days / s</option>
+              </select>
+            </label>
+            <button type="button" data-jump="-1" title="Move the time cursor back by one day">&minus;1 day</button>
+            <button type="button" data-jump="1" title="Move the time cursor forward by one day">Skip +1 day</button>
+            <button type="button" data-jump="5" title="Move the time cursor forward by five days">Skip +5 days</button>
+          </div>
+          <label class="slider-row">Day
+            <input type="range" id="day" min="0" max="0" value="0" step="1">
+            <output id="day-out"></output>
+          </label>
+          <label class="slider-row">Time of day
+            <input type="range" id="tod" min="0" max="1425" value="0" step="15">
+            <output id="tod-out"></output>
+          </label>
+        </div>
+        <div id="readout" class="readout" aria-live="off"></div>
+        <p class="hint">The markers move along the calculated angles from the table (interpolated between table rows). The numbers above are the nearest table row.</p>
+      </section>
+
+      <section class="panel">
+        <h2><span class="term" data-term="altitude">Altitude</span> over time</h2>
+        <p class="lead">Solid line: how high the body is. Dashed line: how high the terrain is in that direction. The body is visible (shaded) when it is above the dashed line. Click or drag on a chart to move the time cursor.</p>
+        <div id="altcharts"></div>
+        <p class="hint xo">The Sun counts as visible when its <span class="term" data-term="limb">upper limb</span> clears the terrain, so shading can start slightly before the centre line crosses the dashed line.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Visibility timeline</h2>
+        <p class="lead">When there is potential sunlight, <span class="term" data-term="geometric">geometric Earth visibility</span>, or both, across the period.</p>
+        <div id="timelines"></div>
+      </section>
+    </div>
+
+    <section class="panel explain">
+      <h2>Why the lunar south pole is special</h2>
+      <ul>
+        <li>At the lunar south pole the Sun stays within a few degrees of the horizon. A single hill can hide it.</li>
+        <li>Earth barely moves in the lunar sky, because the Moon always shows the same face to Earth. So Earth visibility usually depends on the terrain in that one direction.</li>
+        <li>The Moon has no atmosphere: no refraction and no twilight glow. When the Sun is hidden, it is dark.</li>
+      </ul>
+      <details>
+        <summary>Glossary</summary>
+        <dl id="glossary"></dl>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Prototype, not a mission planning tool.</strong> Lunar OPS shows potential sunlight and geometric Earth visibility only. It does not model communication quality, link budget or real power output.</p>
+    <p>Sources: terrain from LOLA 5 m DEMs (PGDA; Barker et al. 2021); ephemeris from JPL Horizons. 3D rendering: three.js (MIT license). Built for the NASA Space Apps Challenge 2026, "Lunar Landing Site Navigator".</p>
+  </footer>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="views.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -46,8 +46,9 @@ Download into `backend/data/`:
 curl -O --output-dir backend/data https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/Site01_final_adj_5mpp_surf.tif
 ```
 
-Site01 (about 41 MB, 16 x 16 km) is centered at lat -89.4632, lon -137.49, which matches site R01
-of the Lunar Surface Data Book (M2M-30044, table A2.1-1).
+Sites used: Site01, Site11, Site23, Site06 (same URL pattern, `SiteXX/SiteXX_final_adj_5mpp_surf.tif`).
+Each tile (16 x 16 km) is centered on the site; Site01 and Site11 match R01 and R11 of the
+Lunar Surface Data Book (M2M-30044, table A2.1-1). Site23 and Site06 positions are tile centers (unconfirmed).
 About 90% of pixels in these polar DEMs are interpolated.
 
 Citations: Barker et al. 2021, Planetary and Space Science 203, 105119,
@@ -56,5 +57,15 @@ doi:10.1016/j.pss.2020.105119; site numbering from Mazarico et al. 2011, Icarus 
 ## Scripts
 
 ```bash
-.venv/bin/python scripts/inspect_dem.py   # prints DEM metadata, writes docs/site01_relief.png
+.venv/bin/python scripts/inspect_dem.py            # prints DEM metadata, writes docs/site01_relief.png
+.venv/bin/python scripts/build_site.py Site23      # horizon profile + sites.json entry + docs/Site23_horizon.png
+.venv/bin/python scripts/build_dem_web.py          # small terrain grids for the 3D map -> frontend/dem/
 ```
+
+## Layout
+
+- `backend/calc/`: horizon, combine, metrics, ephemeris loader (plain Python)
+- `backend/api/`, `backend/main.py`: FastAPI, serves `frontend/` at `/`
+- `backend/data/`: `sites.json`, `horizon_<id>.json`, `horizons_<id>.csv` (JPL, pending), DEM `.tif` (not in git)
+- `frontend/`: single page (vanilla JS + bundled three.js, no CDN), `frontend/dem/` terrain grids
+- `docs/`: API contracts, horizon plots

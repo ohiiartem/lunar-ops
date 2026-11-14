@@ -2,9 +2,33 @@
   {
     "id": "Site01",
     "name": "R01 (LOLA Site01, connecting ridge)",
-    "lat": -89.4632,
-    "lon": -137.49,
+    "lat": -89.46316,
+    "lon": -137.48955,
     "source": "Lunar Surface Data Book M2M-30044, table A2.1-1; LOLA 5 m DEM (PGDA)",
     "horizon_file": "horizon_Site01.json"
+  },
+  {
+    "id": "Site11",
+    "name": "R11 (LOLA Site11, de Gerlache rim)",
+    "lat": -88.68342,
+    "lon": -67.9321,
+    "source": "Lunar Surface Data Book M2M-30044, table A2.1-1; LOLA 5 m DEM (PGDA)",
+    "horizon_file": "horizon_Site11.json"
+  },
+  {
+    "id": "Site23",
+    "name": "Malapert massif (LOLA Site23)",
+    "lat": -85.99478,
+    "lon": -0.23578,
+    "source": "LOLA 5 m DEM (PGDA); position = tile center",
+    "horizon_file": "horizon_Site23.json"
+  },
+  {
+    "id": "Site06",
+    "name": "Nobile rim 1 (LOLA Site06)",
+    "lat": -85.4381,
+    "lon": 37.36667,
+    "source": "LOLA 5 m DEM (PGDA); position = tile center",
+    "horizon_file": "horizon_Site06.json"
   }
 ]
