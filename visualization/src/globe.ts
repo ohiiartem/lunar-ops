@@ -23,7 +23,7 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
   host.replaceChildren(renderer.domElement)
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(34,1,.01,50)
-  const overviewDirection = location(-47,-48)
+  const overviewDirection = location(-90,-68)
   const southPoleDirection = location(-90,-87)
   const startPosition = overviewDirection.clone().multiplyScalar(4.2)
   let overviewDistance = startPosition.length()
@@ -73,10 +73,7 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
     return {i,site,marker,button,line}
   })
   const catalog = [
-    ['North Pole',0,90], ['South Pole',0,-90],
-    ['Apollo 11',23.47314,.67416], ['Apollo 12',-23.4219,-3.0128],
-    ['Apollo 14',-17.47194,-3.64589], ['Apollo 15',3.63330,26.13239],
-    ['Apollo 16',15.5011,-8.9734], ['Apollo 17',30.7723,20.1911],
+    ['South Pole',0,-90],
   ] as const
   const information = document.createElement('div')
   information.className = 'catalog-info'
@@ -100,14 +97,12 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
       const title = document.createElement('strong')
       title.textContent = name
       const description = document.createElement('p')
-      description.textContent = Math.abs(lat)===90 ? 'Lunar pole' : 'Lunar module landing site'
+      description.textContent = 'Lunar south pole'
       const coordinates = document.createElement('p')
       coordinates.className = 'expert-only'
-      coordinates.textContent = Math.abs(lat)===90
-        ? (lat>0?'90° N':'90° S')
-        : lat+'° latitude · '+lon+'° east longitude'
+      coordinates.textContent = '90° S'
       const link = document.createElement('a')
-      link.href = Math.abs(lat)===90 ? 'https://planetarynames.wr.usgs.gov/Page/MOON/target' : 'https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html'
+      link.href = 'https://planetarynames.wr.usgs.gov/Page/MOON/target'
       link.textContent = 'View source'
       link.target = '_blank'
       link.rel = 'noopener'

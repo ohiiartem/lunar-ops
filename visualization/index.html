@@ -95,6 +95,7 @@
           </div>
           <div class="map-tools"><button id="zoom-in" aria-label="Zoom in on map">+</button><button id="zoom-out" aria-label="Zoom out on map">−</button><button id="zoom-reset">Reset</button></div>
         </div>
+        <section id="map-sky" class="sky-view" aria-label="Sky above the map" hidden></section>
         <div id="sky-view" class="sky-view" hidden></div>
         <div id="surface-view" class="sky-view" hidden></div>
         <div id="surface-tools" class="viewer-tools" hidden>
@@ -141,8 +142,6 @@
       </aside>
       <section class="panel compare">
         <h2><span class="simple-only">At this moment</span><span class="expert-only">Mission Conditions</span></h2>
-        <label for="mission-time">Observation time (UTC)</label>
-        <input id="mission-time" type="datetime-local" step="1800">
         <div id="comparison"></div>
         <p class="caption expert-only">Sun visibility uses its upper edge. Earth visibility uses its center. Terrain estimates use the available LOLA coverage.</p>
         <details class="reading-help simple-only">
