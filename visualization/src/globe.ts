@@ -168,7 +168,7 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
     camera.aspect=host.clientWidth/host.clientHeight
     const halfFov = camera.fov*radians/2
     const limitingAngle = Math.atan(Math.tan(halfFov)*Math.min(1,camera.aspect))
-    const nextDistance = radius / Math.sin(Math.atan(Math.tan(limitingAngle)*.84))
+    const nextDistance = radius / Math.sin(Math.atan(Math.tan(limitingAngle)*.62))
     const offset = camera.position.clone().sub(controls.target)
     if (controls.enabled) camera.position.copy(controls.target).add(offset.multiplyScalar(nextDistance/overviewDistance))
     overviewDistance = nextDistance
