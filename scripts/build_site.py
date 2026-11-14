@@ -25,10 +25,10 @@ from backend.calc.horizon import MOON_GEOGRAPHIC, horizon_profile, load_dem, loc
 DATA_BOOK = "Lunar Surface Data Book M2M-30044, table A2.1-1; LOLA 5 m DEM (PGDA)"
 TILE_ONLY = "LOLA 5 m DEM (PGDA); position = tile center"
 SITE_INFO = {  # id: (name, source)
-    "Site01": ("R01 (LOLA Site01, connecting ridge)", DATA_BOOK),
-    "Site11": ("R11 (LOLA Site11, de Gerlache rim)", DATA_BOOK),
-    "Site23": ("Malapert massif (LOLA Site23)", TILE_ONLY),
-    "Site06": ("Nobile rim 1 (LOLA Site06)", TILE_ONLY),
+    "Site01": ("R01 · Connecting ridge", DATA_BOOK),
+    "Site11": ("R11 · de Gerlache rim", DATA_BOOK),
+    "Site23": ("R23 · Malapert massif", TILE_ONLY),
+    "Site06": ("R06 · Nobile rim 1", TILE_ONLY),
 }
 OBSERVER_HEIGHT_M = 2.0  # assumption: lander / antenna height (see README)
 

@@ -38,7 +38,7 @@ Response `200`:
   "sites": [
     {
       "id": "Site01",
-      "name": "R01 (LOLA Site01, connecting ridge)",
+      "name": "R01 · Connecting ridge",
       "lat": -89.4632,
       "lon": -137.49,
       "source": "Lunar Surface Data Book M2M-30044, table A2.1-1; LOLA 5 m DEM (PGDA)",

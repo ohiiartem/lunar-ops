@@ -339,3 +339,12 @@ footer { margin:10px 0 0; }
 .comparison-grid h4 { margin:0; }
 
 #map-sky { max-width:560px; margin-inline:auto; }
+
+/* Time until the next sunset / Earthset (counted from the observation time) */
+.countdown { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:10px !important; }
+.countdown-label { font-weight:600; color:var(--ink); }
+.countdown-time { padding:5px 11px; border:2px solid currentColor; border-radius:9px; background:rgba(255,255,255,.07);
+  font-size:20px; font-weight:700; line-height:1.2; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.condition-card .countdown-time, .object .countdown-time { color:#ffd47c; }
+.caption.countdown { padding-top:8px; }
+.caption.countdown .countdown-time { font-size:16px; color:var(--ink); }

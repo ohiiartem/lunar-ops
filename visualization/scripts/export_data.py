@@ -1,4 +1,4 @@
-"""Export LOLA terrain assets for the browser."""
+"""Export LOLA terrain assets for the browser: every <source>/<R..>/ folder made by prepare_lola.py is exported."""
 import argparse
 from pathlib import Path
 import shutil
@@ -10,8 +10,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('source', type=Path)
 args = parser.parse_args()
 output = Path(__file__).resolve().parents[1]/'public'/'data'
-for site in ('R01','R11'):
-    source = args.source/site
+for source in sorted(p for p in args.source.iterdir() if (p/'heightmap-512.png').exists()):
+    site = source.name
     dest = output/site
     dest.mkdir(parents=True,exist_ok=True)
     for name in ('metadata.json','hillshade.webp'):

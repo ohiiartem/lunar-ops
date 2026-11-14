@@ -11,6 +11,26 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+## Web page (one-time build)
+
+The page lives in `visualization/` (Vite + TypeScript + three.js). Needs Node.js 22.12 or newer.
+`visualization/dist` is not stored in git, so build it once (and after changing the page):
+
+```bash
+cd visualization
+npm ci
+npm run build
+```
+
+Then start the server below and open http://127.0.0.1:8000/. For page development use `npm run dev`
+in `visualization/` (http://localhost:5173/, `/api` is proxied to the server on port 8000).
+Terrain assets of the page are made from the LOLA tiles in `backend/data/`:
+
+```bash
+.venv/bin/python visualization/scripts/prepare_lola.py R23 backend/data/Site23_final_adj_5mpp_surf.tif /tmp/lola/R23
+.venv/bin/python visualization/scripts/export_data.py /tmp/lola     # exports every site folder found in /tmp/lola
+```
+
 ## Run the server
 
 From the repository root:
@@ -20,7 +40,7 @@ LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
 ```
 
 - Interactive API docs: http://127.0.0.1:8000/docs
-- If a `frontend/` folder exists, it is served at `/`.
+- If `visualization/dist` exists (`npm run build` in `visualization/`), it is served at `/`.
 - **`LUNAR_OPS_DEMO=1` uses SYNTHETIC Sun/Earth positions** (made-up smooth curves), only so the page can be built
   before the JPL Horizons tables are ready. Responses then carry `"data_source": "synthetic_demo"` and the UI must
   show a warning. Real numbers come from `backend/data/horizons_<site_id>.csv` (columns
@@ -36,6 +56,20 @@ LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
 .venv/bin/python tests/test_metrics.py
 .venv/bin/python tests/test_api.py
 ```
+
+## Sites
+
+| Id | Name | Latitude | Longitude | Status |
+|---|---|---|---|---|
+| Site01 | R01 · Connecting ridge | -89.46316 | -137.48955 | active |
+| Site11 | R11 · de Gerlache rim | -88.68342 | -67.9321 | active |
+| Site23 | R23 · Malapert massif | -85.99478 | -0.23578 | active |
+| Site06 | R06 · Nobile rim 1 | -85.4381 | 37.36667 | **hidden**: no JPL Horizons table yet |
+
+Site06 is hidden, not removed: it stays in `backend/data/sites.json` with `"enabled": false`, and its horizon profile
+(`horizon_Site06.json`), LOLA tile and web terrain assets (`visualization/public/data/R06`, `visualization/public/dem`)
+are kept. To bring it back: put `horizons_Site06.csv` into `backend/data/` (`scripts/import_horizons.py`), set `enabled` to
+`true` (or delete the field), add the site to `visualization/public/data/sites.json` (offline catalogue), rebuild the page.
 
 ## Data (not stored in git)
 
@@ -60,14 +94,13 @@ doi:10.1016/j.pss.2020.105119; site numbering from Mazarico et al. 2011, Icarus 
 ```bash
 .venv/bin/python scripts/inspect_dem.py            # prints DEM metadata, writes docs/site01_relief.png
 .venv/bin/python scripts/build_site.py Site23      # horizon profile + sites.json entry + docs/Site23_horizon.png
-.venv/bin/python scripts/build_dem_web.py          # small terrain grids for the 3D map -> frontend/dem/
 .venv/bin/python scripts/import_horizons.py Site01 --sun sun.csv --earth earth.csv   # JPL tables -> backend/data/horizons_Site01.csv
 ```
 
 ## Layout
 
 - `backend/calc/`: horizon, combine, metrics, ephemeris loader (plain Python)
-- `backend/api/`, `backend/main.py`: FastAPI, serves `frontend/` at `/`
+- `backend/api/`, `backend/main.py`: FastAPI, serves the built web page at `/`
 - `backend/data/`: `sites.json`, `horizon_<id>.json`, `horizons_<id>.csv` (JPL, pending), DEM `.tif` (not in git)
-- `frontend/`: single page (vanilla JS + bundled three.js, no CDN), `frontend/dem/` terrain grids
+- `visualization/`: web page (Vite + TypeScript + three.js), built into `visualization/dist`
 - `docs/`: API contracts, horizon plots

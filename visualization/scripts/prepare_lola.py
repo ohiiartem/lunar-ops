@@ -13,7 +13,8 @@ from rasterio.transform import Affine
 from rasterio.windows import Window
 
 RADIUS = 1737400
-SITES = {'R01': (-137.49, -89.4632), 'R11': (-67.9321, -88.6834)}
+SITES = {'R01': (-137.49, -89.4632), 'R11': (-67.9321, -88.6834),
+         'R23': (-0.2358, -85.9948), 'R06': (37.3667, -85.4381)}  # lon, lat; R23/R06 = centres of the LOLA tiles
 
 def horizon(dem, data, project, lon, lat, z):
     lam, phi = np.radians([lon, lat])
@@ -52,8 +53,8 @@ def run(site, source, output, width_m):
     filename = f'Site{number}_final_adj_5mpp_surf.tif'
     with rasterio.open(source) as dem:
         crs = CRS.from_wkt(dem.crs.to_wkt())
-        if dem.count!=1 or dem.shape!=(3200,3200) or not np.allclose(dem.res,[5,5]) or abs(crs.ellipsoid.semi_major_metre-RADIUS)>1:
-            raise ValueError('Expected the original 3200 × 3200 PGDA 78 LOLA GeoTIFF.')
+        if dem.count!=1 or dem.shape[0]!=dem.shape[1] or not np.allclose(dem.res,[5,5]) or abs(crs.ellipsoid.semi_major_metre-RADIUS)>1:
+            raise ValueError('Expected a square single-band 5 m PGDA LOLA GeoTIFF on the R=1737.4 km sphere.')
         project = Transformer.from_crs(crs.geodetic_crs,crs,always_xy=True).transform
         x,y = project(lon,lat)
         row,col = dem.index(x,y)
