@@ -1,9 +1,10 @@
 import { colors, directionAt, names, targets } from './model'
 import type { Observations, Target } from './model'
 import type { Horizon } from './sky-data'
+import { num } from './format'
 
 const directions = ['N','NE','E','SE','S','SW','W','NW']
-const formatAngle = (angle: number) => `${angle.toFixed(2)}°`
+const formatAngle = (angle: number) => `${num(angle)}°`
 
 export function createSky(host: HTMLElement, surface: boolean, observations: Observations, profile: Horizon, initialIndex:number, id = surface?'surface':'sky') {
   const horizon: Horizon = profile.length ? profile : [[0,0],[360,0]]

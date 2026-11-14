@@ -38,3 +38,14 @@ export function describe(flags: boolean[], index: number, stepMin: number, label
 export function countdownHtml(item: { label: string; time: string }) {
   return `<span class="countdown-label">${item.label}</span><span class="countdown-time">${item.time}</span>`
 }
+
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+// "28 Nov 12:40 → 23:50 · 11 h 10 min" (UTC; the date of the end is shown only if it differs from the start)
+export function formatWindow(from: string, to: string) {
+  const a = new Date(from), b = new Date(to)
+  const day = (d: Date) => `${d.getUTCDate()} ${months[d.getUTCMonth()]}`
+  const time = (d: Date) => d.toISOString().slice(11, 16)
+  const end = day(a) === day(b) ? time(b) : `${day(b)} ${time(b)}`
+  return `${day(a)} ${time(a)} → ${end} · ${formatDuration((b.getTime() - a.getTime()) / 3_600_000)}`
+}

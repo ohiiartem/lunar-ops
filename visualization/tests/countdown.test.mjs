@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { describe, formatDuration, nextChange } from '../src/countdown.ts'
+import { describe, formatDuration, formatWindow, nextChange } from '../src/countdown.ts'
 
 const labels = { ending: 'Sunset', starting: 'Sunrise', stays: 'Up', stayed: 'Down' }
 test('Counts steps to the next change from the observation time', () => {
@@ -21,4 +21,9 @@ test('Durations', () => {
   assert.equal(formatDuration(2), '2 h')
   assert.equal(formatDuration(2.5), '2 h 30 min')
   assert.equal(formatDuration(53), '2 d 5 h')
+})
+
+test('Windows are short and show the duration', () => {
+  assert.equal(formatWindow('2026-11-28T12:40:00Z','2026-11-28T23:50:00Z'), '28 Nov 12:40 → 23:50 · 11 h 10 min')
+  assert.equal(formatWindow('2026-11-14T00:00:00Z','2026-11-25T21:30:00Z'), '14 Nov 00:00 → 25 Nov 21:30 · 11 d 21 h')
 })

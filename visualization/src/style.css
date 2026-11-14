@@ -348,3 +348,7 @@ footer { margin:10px 0 0; }
 .condition-card .countdown-time, .object .countdown-time { color:#ffd47c; }
 .caption.countdown { padding-top:8px; }
 .caption.countdown .countdown-time { font-size:16px; color:var(--ink); }
+
+.shift-custom { display:inline-flex; align-items:center; gap:6px; margin-left:6px; font-weight:600; }
+.shift-custom input { width:84px; padding:7px 9px; background:#131e2d; color:var(--ink); border:1px solid var(--line); border-radius:8px; font:inherit; font-variant-numeric:tabular-nums; }
+#shift-status { max-width:70ch; }

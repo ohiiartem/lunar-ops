@@ -5,6 +5,7 @@ import { assetFolder, dayMs, loadScenario, loadSites, requestAPI } from './sky-d
 import type { Comparison, Scenario } from './sky-data'
 import { showComparison, showMetrics } from './mission'
 import { countdownHtml, describe } from './countdown'
+import { num } from './format'
 import { mapNavigation } from './map-navigation'
 import { colors, directionAt, explainVisibility, gridDirection, lunarDirection, names, readJson, targets } from './model'
 import type { Metadata, Observations, Site } from './model'
@@ -40,7 +41,7 @@ const daysInput = element<HTMLInputElement>('scenario-days')
 const stepSelect = element<HTMLSelectElement>('scenario-step')
 const terrainInput = element<HTMLInputElement>('scenario-terrain')
 const analyzeButton = element<HTMLButtonElement>('analyze')
-const shiftButtons = document.querySelectorAll<HTMLButtonElement>('[data-shift]')
+const shiftButtons = document.querySelectorAll<HTMLButtonElement>('[data-shift],[data-shift-custom]')
 const metrics = element('mission-metrics')
 const shiftResults = element('shift-results')
 const shiftStatus = element('shift-status')
@@ -93,7 +94,7 @@ function renderScale() {
   const decade = 10**Math.floor(Math.log10(limit))
   const length = ([5,2,1].find(n=>n*decade<=limit) ?? 1)*decade
   element('scale-line').style.width = `${length/pixelMeters}px`
-  element('scale-label').textContent = length>=1000?`${length/1000} km`:`${length} m`
+  element('scale-label').textContent = length>=1000?`${num(length/1000)} km`:`${length} m`
 }
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
@@ -256,8 +257,8 @@ function render() {
         </div>`
     }
     return `<div class="object">
-      <div class="body-head"><h3 style="color:${colors[target]}">${names[target]}</h3><small>AZ ${azimuth.toFixed(2)}° · EL ${elevation.toFixed(2)}°</small></div>
-      <div class="row"><span>${terrainUsed?'Terrain':'Level'} horizon · ${horizon.toFixed(2)}°</span>${visibility(visible)}</div>
+      <div class="body-head"><h3 style="color:${colors[target]}">${names[target]}</h3><small>AZ ${num(azimuth)}° · EL ${num(elevation)}°</small></div>
+      <div class="row"><span>${terrainUsed?'Terrain':'Level'} horizon · ${num(horizon)}°</span>${visibility(visible)}</div>
       <div class="countdown">${countdownHtml(countdowns[target])}</div>
       </div>`
   }).join('') + `<p class="caption">Sun and Earth together · ${observations.bothVisible[i]?'Visible':'Unavailable at this time'}</p>
@@ -443,7 +444,7 @@ async function selectSite() {
     element('period-start').textContent = observations.times[0].slice(0,10)
     element('period-end').textContent = observations.times.at(-1)!.slice(0,10)
     element('site-facts').innerHTML = `<dt>Latitude / longitude</dt><dd>${selected.lat.toFixed(4)}° / ${selected.lon.toFixed(4)}°</dd>
-      <dt>Terrain elevation</dt><dd>${metadata?.ground_m===undefined?'—':metadata.ground_m.toFixed(1)+' m'}</dd>
+      <dt>Terrain elevation</dt><dd>${metadata?.ground_m===undefined?'—':num(metadata.ground_m)+' m'}</dd>
       <dt>Reference frame</dt><dd>${metadata?'MOON_ME / DE421':'—'}</dd>
       <dt>Sky observations</dt><dd>${data.demo?'Synthetic demo':data.offline?'JPL Horizons · offline snapshot':'JPL Horizons · API'}</dd>`
     if (metadata) {
@@ -472,10 +473,34 @@ function chooseSite(reset: boolean) {
   return selectSite()
 }
 
+const shiftInput = element<HTMLInputElement>('shift-custom')
+
+// Dates (UTC, ms) covered by the data of the current site, from /api/sites.
+function dataRange() {
+  const from = Date.parse(current?.site.data_from ?? ''), to = Date.parse(current?.site.data_to ?? '')
+  return Number.isFinite(from) && Number.isFinite(to) ? { from, to } : undefined
+}
+
 async function missionShift(shift: number) {
   if (!current || current.offline || catalogueOffline) return
   const a = current.scenario
-  const b = {...a,start:new Date(Date.parse(a.start)+dayMs*shift).toISOString().replace('.000Z','Z')}
+  const day = (ms: number) => new Date(ms).toISOString().slice(0,10)
+  const range = dataRange()
+  const start = Date.parse(a.start) + dayMs*shift
+  const end = start + dayMs*a.days
+  // Invalid input or no data: explain, keep the buttons usable (clearComparison would disable them).
+  if (!Number.isInteger(shift) || shift===0 || Math.abs(shift)>365) {
+    shiftResults.replaceChildren()
+    shiftStatus.textContent = 'Enter a whole number of days from −365 to 365, not 0.'
+    return
+  }
+  if (range && (start<range.from || end>range.to)) {
+    shiftResults.replaceChildren()
+    shiftStatus.textContent = `No data for a shift of ${shift>0?'+':'−'}${Math.abs(shift)} days: scenario B would cover ${day(start)} to ${day(end)}, `+
+      `the data covers ${day(range.from)} to ${day(range.to)} UTC.`
+    return
+  }
+  const b = {...a,start:new Date(start).toISOString().replace('.000Z','Z')}
   clearComparison()
   const loader = new AbortController()
   comparisonLoading = loader
@@ -505,7 +530,12 @@ element('surface-button').onclick = () => openSky(true)
 element('terrain-surface').onclick = () => openSky(true)
 element('surface-left').onclick = () => sky?.turn(-30)
 element('surface-right').onclick = () => sky?.turn(30)
-for (const button of shiftButtons) button.onclick = () => void missionShift(Number(button.dataset.shift))
+for (const button of shiftButtons) {
+  button.onclick = () => void missionShift(button.dataset.shift!==undefined ? Number(button.dataset.shift) : Number(shiftInput.value||NaN))
+}
+shiftInput.addEventListener('keydown', event => {
+  if (event.key==='Enter') { event.preventDefault(); void missionShift(Number(shiftInput.value||NaN)) }
+})
 startDate.onchange = stepSelect.onchange = () => refreshCoverage(false)
 element<HTMLFormElement>('scenario-form').onsubmit = event => {
   event.preventDefault()
@@ -577,7 +607,7 @@ element('map-stage').addEventListener('pointermove', event => {
   const x=x0+(col+.5)*dx, y=y0+(row+.5)*dy
   const lat=-90+2*Math.atan(Math.hypot(x,y)/(2*1737400))*180/Math.PI
   const lon=(Math.atan2(x,y)*180/Math.PI+360)%360
-  const z=code===undefined||code===info.nodata_code?'Data unavailable':`${(info.min_m+(code-1)*info.step_m).toFixed(1)} m`
+  const z=code===undefined||code===info.nodata_code?'Data unavailable':`${num(info.min_m+(code-1)*info.step_m)} m`
   element('map-sample').textContent=`${lat.toFixed(4)}° / ${lon.toFixed(4)}° E · ${z}`
 })
 const overview = element('overview')
@@ -706,8 +736,8 @@ function renderSystemReadout() {
   const sample = current.observations[selectedBody][Number(hour.value)]
   summary.textContent = explainVisibility(selectedBody,sample[3],current.observations.terrainUsed)
   summary.hidden = false
-  rows.innerHTML = `<div><dt>Azimuth</dt><dd>${sample[0].toFixed(2)}°</dd></div>
-    <div><dt>Elevation</dt><dd>${sample[1].toFixed(2)}°</dd></div>
+  rows.innerHTML = `<div><dt>Azimuth</dt><dd>${num(sample[0])}°</dd></div>
+    <div><dt>Elevation</dt><dd>${num(sample[1])}°</dd></div>
     <div><dt>Horizon visibility</dt><dd>${sample[3]?'Visible':'Obscured'}</dd></div>`
 }
 

@@ -184,6 +184,10 @@
         <button id="advance-day" data-shift="1" disabled>+1 day</button>
         <button id="advance-five" data-shift="5" disabled>+5 days</button>
         <button id="advance-ten" data-shift="10" disabled>+10 days</button>
+        <label class="shift-custom">Your option
+          <input id="shift-custom" type="number" step="1" min="-365" max="365" placeholder="days" inputmode="numeric" aria-label="Shift in days (negative = earlier)">
+        </label>
+        <button id="shift-custom-go" data-shift-custom disabled>Compare</button>
       </div>
       <p id="shift-status" role="status"></p>
       <div id="shift-results"></div>

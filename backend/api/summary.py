@@ -3,10 +3,15 @@
 THRESHOLD_H = 0.5  # differences smaller than this are reported as "about the same"
 
 
+def _h(x):
+    """Hours with one decimal, whole numbers without ".0" (70 h, 63.5 h)."""
+    return f"{abs(x):.1f}".removesuffix(".0")
+
+
 def _phrase(delta, what):
     if abs(delta) < THRESHOLD_H:
         return f"about the same {what}"
-    return f"{abs(delta):.1f} h {'more' if delta > 0 else 'less'} {what}"
+    return f"{_h(delta)} h {'more' if delta > 0 else 'less'} {what}"
 
 
 def summarize(delta):
@@ -19,5 +24,5 @@ def summarize(delta):
     )
     dark = delta["longest_darkness_hours"]
     if abs(dark) >= 1.0:
-        text += f" Its longest dark period is {abs(dark):.1f} h {'longer' if dark > 0 else 'shorter'}."
+        text += f" Its longest dark period is {_h(dark)} h {'longer' if dark > 0 else 'shorter'}."
     return text
