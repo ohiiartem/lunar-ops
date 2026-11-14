@@ -51,6 +51,7 @@ let current: Data | undefined
 let terrain: Awaited<ReturnType<typeof import('./terrain')['createTerrain']>> | undefined
 type View = 'map'|'terrain'|'sky'|'surface'
 let view: View = 'map'
+let mapSky: ReturnType<typeof createSky> | undefined
 let sky: ReturnType<typeof createSky> | undefined
 let analyzed: Observations | undefined
 const dayRange = element<HTMLInputElement>('day-range')
@@ -63,7 +64,6 @@ const exaggeration = element<HTMLSelectElement>('exaggeration')
 const wireframe = element<HTMLInputElement>('wireframe')
 const directions = element<HTMLInputElement>('directions')
 const layer = element<HTMLSelectElement>('map-layer')
-const missionTime = element<HTMLInputElement>('mission-time')
 const analysis = element<HTMLDetailsElement>('analysis')
 const asset = (id: string) => `${import.meta.env.BASE_URL}data/${encodeURIComponent(assetFolder(id))}/`
 
@@ -132,7 +132,10 @@ function drawDirections() {
     }
     return
   }
-  if (view === 'map') renderMap(current, visualHour)
+  if (view === 'map') {
+    renderMap(current, index)
+    mapSky?.update(index,Number(hour.value),true)
+  }
   else if (view==='terrain') terrain?.update(observations,index)
   else sky?.update(index,Number(hour.value),directions.checked)
 }
@@ -163,7 +166,8 @@ function renderMap(data: Data, position: number) {
   const u = (x - x0) / dx
   const v = (y - y0) / dy
   if (!overlay.hasChildNodes()) {
-    overlay.innerHTML = targets.map(target => `<g data-direction="${target}">
+    overlay.innerHTML = `<defs><linearGradient id="map-light"><stop stop-color="#131b29" stop-opacity=".38"/><stop offset="1" stop-color="#ffe2a3" stop-opacity=".23"/></linearGradient></defs>
+      <rect id="map-lighting" width="512" height="512" fill="url(#map-light)"/>` + targets.map(target => `<g data-direction="${target}">
       <defs><marker id="tip-${target}" markerWidth="6" markerHeight="6" refX="8" refY="4" viewBox="0 0 8 8" orient="auto">
         <path d="M0 0L8 4L0 8Z" fill="${colors[target]}"/></marker></defs>
       <line x1="${u}" y1="${v}" stroke="${colors[target]}" stroke-width="2.5" marker-end="url(#tip-${target})"/>
@@ -171,6 +175,14 @@ function renderMap(data: Data, position: number) {
       <text x="0" y="-11" text-anchor="middle" fill="${colors[target]}">${names[target]}</text></g>
       </g>`).join('') + `<circle cx="${u}" cy="${v}" r="5" fill="white" stroke="#17212a" stroke-width="2"/>`
   }
+  const [sunAzimuth] = directionAt(observations,'Sun',position)
+  const [lightX,lightY] = gridDirection(metadata.longitude_latitude_deg[0],sunAzimuth)
+  const gradient = overlay.querySelector('#map-light')!
+  gradient.setAttribute('x1',String(.5-lightX*.5))
+  gradient.setAttribute('x2',String(.5+lightX*.5))
+  gradient.setAttribute('y1',String(.5+lightY*.5))
+  gradient.setAttribute('y2',String(.5-lightY*.5))
+  overlay.querySelector('#map-lighting')!.setAttribute('fill',observations.Sun[Number(hour.value)][3] ? 'url(#map-light)' : '#11182768')
   for (const target of targets) {
     const group = overlay.querySelector<SVGGElement>(`[data-direction="${target}"]`)!
     group.style.display = directions.checked ? '' : 'none'
@@ -208,7 +220,6 @@ function render() {
   const { observations, scenario } = current
   const samplesPerDay = 1440/scenario.step_min
   const time = observations.times[i]
-  missionTime.value = time.replace(' ','T')
   dayRange.value = String(Math.floor(i/samplesPerDay))
   dayTime.max = String(Math.min(samplesPerDay-1,observations.times.length-1-Math.floor(i/samplesPerDay)*samplesPerDay))
   dayTime.value = String(i%samplesPerDay)
@@ -261,6 +272,8 @@ function setView(next: View) {
   element('terrain-tools').hidden = next!=='terrain'
   element('terrain-caption').hidden = next!=='terrain'
   element('surface-tools').hidden = next!=='surface'
+  element('map-sky').hidden = next!=='map' || !current?.metadata
+  if (next!=='map') mapSky = undefined
   element('map-readouts').hidden = next!=='map'
   element('map-layer-controls').hidden = next!=='map'
   for (const name of ['map','terrain','sky','surface'] as const) {
@@ -284,6 +297,7 @@ function updateViewHelp() {
 
 function showMap() {
   setView('map')
+  if (current?.metadata) mapSky = createSky(element('map-sky'),false,current.observations,current.horizon,Number(hour.value),'map-sky')
   render()
 }
 
@@ -311,10 +325,10 @@ async function openTerrain() {
       : await module.loadSiteTerrain(data.site,siteLoading?.signal)
     if (request !== revision) return
     terrainView.replaceChildren()
-    terrain = module.createTerrain(terrainView, model.metadata, model.grid, () => openSky(true))
+    terrain = module.createTerrain(terrainView, model.metadata, model.grid, data.site.name, () => openSky(true))
     const caption = element('terrain-caption')
-    caption.classList.toggle('expert-only',!model.grid.flat)
-    caption.textContent = model.grid.flat ? 'Terrain: none. Showing a level surface.' : 'Terrain mesh from LOLA. Directional light follows the Sun.'
+    caption.classList.remove('expert-only')
+    caption.textContent = model.grid.flat ? 'Terrain: none. Showing a level surface.' : 'Tracks show apparent positions over the selected observation period. Body sizes and distances are illustrative. Terrain shadows use the displayed relief. Mission conditions refer to the landing point.'
     syncTerrain()
     render()
   } catch (error) {
@@ -390,7 +404,8 @@ async function selectSite() {
   siteLoading = loader
   ++revision
   current = undefined
-  playButton.disabled = hour.disabled = missionTime.disabled = true
+  mapSky = undefined
+  playButton.disabled = hour.disabled = true
   dayRange.disabled = dayTime.disabled = true
   analyzeButton.disabled = true
   if (settings.dataset.mode==='system') renderSystemReadout()
@@ -405,7 +420,6 @@ async function selectSite() {
   element('height-range').textContent = ''
   element('scale-label').textContent = ''
   element('map-sample').textContent = ''
-  missionTime.value = ''
   element('active-site').textContent = selected.name
   reportSource(selected.data_source==='synthetic_demo',catalogueOffline)
   status.textContent = 'Loading scenario…'
@@ -422,11 +436,8 @@ async function selectSite() {
     hour.value = String(Math.max(0,observations.times.indexOf(previousTime ?? '')))
     visualHour = Number(hour.value)
     dayRange.max = String(Math.floor((observations.times.length-1)/(1440/scenario.step_min)))
-    hour.disabled = missionTime.disabled = playButton.disabled = false
+    hour.disabled = playButton.disabled = false
     dayRange.disabled = dayTime.disabled = false
-    missionTime.min = observations.times[0].replace(' ','T')
-    missionTime.max = observations.times.at(-1)!.replace(' ','T')
-    missionTime.step = String(scenario.step_min*60)
     mapButton.disabled = !metadata
     if (metadata) map.src = url+layer.value
     element('period-start').textContent = observations.times[0].slice(0,10)
@@ -446,6 +457,7 @@ async function selectSite() {
     status.textContent = ''
     if (settings.dataset.mode==='terrain' && previousView==='terrain') void openTerrain()
     else if (settings.dataset.mode==='terrain' && (previousView!=='map' || !metadata)) openSky(previousView==='surface')
+    else if (settings.dataset.mode==='terrain') showMap()
     else render()
   } catch (error) {
     if (!loader.signal.aborted) status.textContent = errorMessage(error)
@@ -542,12 +554,6 @@ document.addEventListener('visibilitychange', () => {
 element('previous-hour').onclick=()=>selectHour(Math.max(Number(hour.min),Number(hour.value)-1))
 element('next-hour').onclick=()=>selectHour(Math.min(Number(hour.max),Number(hour.value)+1))
 analysis.addEventListener('toggle', render)
-missionTime.addEventListener('change', () => {
-  if (!current) return
-  const i = current.observations.times.indexOf(missionTime.value.replace('T',' '))
-  if (i>=0) { status.textContent='';selectHour(i) }
-  else { render();status.textContent=`Choose a UTC time on the ${current.scenario.step_min}-minute observation grid.` }
-})
 layer.addEventListener('change', () => {
   if (current?.metadata) map.src = current.url+layer.value
   element('height-legend').hidden = layer.value!=='elevation.webp'

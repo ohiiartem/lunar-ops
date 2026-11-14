@@ -152,7 +152,13 @@ input[type=checkbox] { accent-color:#9d75ef; }
 .viewport { position:relative; overflow:hidden; border-radius:7px; margin:12px auto 0; background:#0b1119; }
 .viewport img,.viewport svg,.viewport canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
 #map-view { aspect-ratio:1; width:min(100%,60vh); }
-#terrain-view { height:clamp(300px,57vh,740px); }
+#terrain-view { height:clamp(300px,57vh,740px); background:#111826; }
+.terrain-body-label {
+  position:absolute; transform:translate(-50%,calc(-100% - 5px)); pointer-events:none;
+  max-width:85%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  padding:3px 9px; border:1px solid #8193af; border-radius:16px;
+  background:#18253aee; color:#eef4ff; font-size:12px; font-weight:650;
+}
 #map-stage { position:absolute;inset:0;touch-action:none;cursor:grab; }
 #map-stage:active { cursor:grabbing; }
 .map-tools { position:absolute; bottom:8px; right:8px; display:flex;gap:4px; }
@@ -331,6 +337,8 @@ footer { margin:10px 0 0; }
 #shift-results:not(:empty) { margin-top:14px; }
 .comparison-grid dl { display:grid; gap:5px; }
 .comparison-grid h4 { margin:0; }
+
+#map-sky { max-width:560px; margin-inline:auto; }
 
 /* Time until the next sunset / Earthset (counted from the observation time) */
 .countdown { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:10px !important; }

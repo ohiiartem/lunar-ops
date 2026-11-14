@@ -5,7 +5,7 @@ import type { Horizon } from './sky-data'
 const directions = ['N','NE','E','SE','S','SW','W','NW']
 const formatAngle = (angle: number) => `${angle.toFixed(2)}°`
 
-export function createSky(host: HTMLElement, surface: boolean, observations: Observations, profile: Horizon, initialIndex:number) {
+export function createSky(host: HTMLElement, surface: boolean, observations: Observations, profile: Horizon, initialIndex:number, id = surface?'surface':'sky') {
   const horizon: Horizon = profile.length ? profile : [[0,0],[360,0]]
   const angles = [...horizon.map(point=>point[1]),...targets.flatMap(target=>observations[target].map(row=>row[1]))]
   const minimum = Math.floor(Math.min(-4,...angles))-1
@@ -36,7 +36,7 @@ export function createSky(host: HTMLElement, surface: boolean, observations: Obs
   const mesh = document.createElementNS(chart.namespaceURI,'g')
   const compass = document.createElementNS(chart.namespaceURI,'g')
   const definition = document.createElementNS(chart.namespaceURI,'defs')
-  const clipId = surface?'surface-plot':'sky-plot'
+  const clipId = id+'-plot'
   const gradientId = clipId+'-gradient'
   definition.innerHTML = `<clipPath id="${clipId}"><rect x="${left}" y="${top}" width="${right-left}" height="${bottom-top}"/></clipPath>
     <linearGradient id="${gradientId}" x2="0%" y2="100%"><stop stop-color="#0a111c"/><stop offset="100%" stop-color="#263948"/></linearGradient>`
@@ -68,8 +68,20 @@ export function createSky(host: HTMLElement, surface: boolean, observations: Obs
     const group = document.createElementNS(chart.namespaceURI,'g')
     group.setAttribute('data-sky-body',target)
     group.setAttribute('fill',colors[target])
-    group.innerHTML = `<circle r="${target==='Sun'?8:6}" stroke="${colors[target]}" stroke-width="2"/>
-      <text y="-13" x="0" text-anchor="middle" fill="${colors[target]}">${names[target]}</text>`
+    const radius = target==='Sun'?13:15
+    const disk = id+'-'+target
+    const earth = import.meta.env.BASE_URL+'earth-atmos.jpg'
+    group.innerHTML = `<defs>
+      <clipPath id="${disk}-clip"><circle r="${radius}"/></clipPath>
+      <radialGradient id="${disk}-shade" cx="33%" cy="28%" r="72%">
+        <stop stop-color="${target==='Sun'?'#fffce1':'#f4faff'}" stop-opacity="${target==='Sun'?1:.28}"/>
+        <stop offset="55%" stop-color="${target==='Sun'?'#ffca59':'#24466c'}" stop-opacity="${target==='Sun'?1:.12}"/>
+        <stop offset="100%" stop-color="${target==='Sun'?'#e86b1b':'#030713'}" stop-opacity="${target==='Sun'?1:.88}"/>
+      </radialGradient>
+      </defs>
+      ${target==='Earth'?`<image href="${earth}" x="-15" y="-15" width="30" height="30" preserveAspectRatio="xMidYMid slice" clip-path="url(#${disk}-clip)"/>`:''}
+      <circle r="${radius}" fill="url(#${disk}-shade)" stroke="${colors[target]}" stroke-width="1.2"/>
+      <text y="-21" x="0" text-anchor="middle">${names[target]}</text>`
     ground.append(group)
     markers.set(target,group)
   }
@@ -78,11 +90,11 @@ export function createSky(host: HTMLElement, surface: boolean, observations: Obs
   readout.className = 'sky-readout expert-only'
   const notice = document.createElement('p')
   notice.className = 'caption expert-only'
-  notice.textContent = `${profile.length?'LOLA terrain horizon':'Level horizon'} · Vertical scale is exaggerated`
+  notice.textContent = `${profile.length?'LOLA terrain horizon':'Level horizon'} · Vertical scale and body sizes are exaggerated`
   const guide = document.createElement('p')
   guide.className = 'caption simple-only'
   guide.textContent = profile.length
-    ? 'The outline shows the hills around this site. A hollow symbol marks an object hidden at the selected time. Heights are stretched so small changes are easier to see.'
+    ? 'The outline shows the hills around this site. Dimmed bodies are below the selected horizon. Body sizes are illustrative. Heights are stretched so small changes are easier to see.'
     : 'The straight line shows the level horizon used for this scenario.'
   host.replaceChildren(chart,readout,guide,notice)
 
@@ -128,8 +140,7 @@ export function createSky(host: HTMLElement, surface: boolean, observations: Obs
       marker.setAttribute('transform',`translate(${x(offset)} ${y(altitude)})`)
       const row = observations[target][Math.floor(index)]
       const obscured = !row[3]
-      marker.querySelector('circle')!.setAttribute('fill',obscured?'#172331':colors[target])
-      marker.setAttribute('opacity',obscured ? '.68':'1')
+      marker.setAttribute('opacity',obscured ? '.42':'1')
     }
   }
 
