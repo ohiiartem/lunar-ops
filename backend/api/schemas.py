@@ -7,7 +7,7 @@ class Scenario(BaseModel):
     site_id: str
     start: datetime
     days: int = Field(ge=1, le=366)
-    step_min: int = Field(default=30, ge=5, le=120)
+    step_min: int = Field(default=30, ge=10, le=120)
     use_terrain: bool = True
 
     @field_validator("start")
