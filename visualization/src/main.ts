@@ -4,7 +4,7 @@ import { createSky } from './sky-view'
 import { loadSkyData } from './sky-data'
 import type { Horizon } from './sky-data'
 import { mapNavigation } from './map-navigation'
-import { colors, compare, directionAt, gridDirection, names, readJson, targets } from './model'
+import { colors, compare, directionAt, gridDirection, lunarDirection, names, readJson, targets } from './model'
 import type { Metadata, Observations, Site } from './model'
 import type { SystemBody } from './solar-system'
 
@@ -79,7 +79,7 @@ let playing = false
 
 function updatePlayButton() {
   const label = playing ? 'Pause timeline' : 'Play timeline'
-  playButton.textContent = playing ? 'Ⅱ' : '▶'
+  playButton.dataset.playing = String(playing)
   playButton.setAttribute('aria-label', label)
   playButton.title = label
 }
@@ -93,17 +93,23 @@ function stopPlayback() {
 
 function drawDirections() {
   if (!current) return
-  if (analysis.open) updateAnalysisCursor(current.observations,visualHour)
+  const { metadata, observations } = current
+  const index = reducedMotion.matches ? Number(hour.value) : visualHour
+  if (analysis.open) updateAnalysisCursor(observations,visualHour)
   if (settings.dataset.mode === 'system') {
-    const initialTime = Date.parse(current.observations.times[0].replace(' ','T')+'Z')
-    const index = reducedMotion.matches ? Number(hour.value) : visualHour
+    const initialTime = Date.parse(observations.times[0].replace(' ','T')+'Z')
     system?.update(initialTime+index*30*60_000)
     return
   }
-  if (settings.dataset.mode === 'globe') return
+  if (settings.dataset.mode === 'globe') {
+    if (lunarGlobe) {
+      lunarGlobe.setSunDirection(...lunarDirection(...metadata.longitude_latitude_deg,...directionAt(observations,'Sun',index)))
+    }
+    return
+  }
   if (view === 'map') renderMap(current, visualHour)
-  else if (view==='terrain') terrain?.update(current.observations, reducedMotion.matches ? Number(hour.value) : visualHour)
-  else sky?.update(reducedMotion.matches ? Number(hour.value) : visualHour,Number(hour.value),directions.checked)
+  else if (view==='terrain') terrain?.update(observations,index)
+  else sky?.update(index,Number(hour.value),directions.checked)
 }
 
 function selectHour(index: number) {
@@ -111,7 +117,7 @@ function selectHour(index: number) {
   stopPlayback()
   index = Math.max(0,Math.min(Number(hour.max),index))
   hour.value = String(index)
-  if (reducedMotion.matches || settings.dataset.mode==='globe' || Math.abs(index-start)>48) visualHour = index
+  if (reducedMotion.matches || Math.abs(index-start)>48) visualHour = index
   render()
   if (visualHour === index) return
   const started = performance.now()
@@ -425,9 +431,12 @@ const globe = import('./globe').then(module => module.createGlobe(element('moon-
   console.error(error)
   return undefined
 })
+let lunarGlobe: Awaited<typeof globe>
 const floatingToggle = element<HTMLButtonElement>('globe-floating')
 void globe.then(world => {
   if (!world) return
+  lunarGlobe = world
+  if (settings.dataset.mode==='globe') drawDirections()
   moonCatalog.hidden = settings.dataset.mode!=='globe'
   const { floating } = world
   const sync = () => {
@@ -585,6 +594,7 @@ function setMode(mode: 'globe'|'terrain'|'system') {
   moonCatalog.hidden = mode !== 'globe' || !element('moon-catalog-items').hasChildNodes()
   element('return-globe').hidden = mode !== 'terrain'
   element('system-open').setAttribute('aria-pressed',String(mode==='system'))
+  if (mode==='globe') drawDirections()
 }
 
 async function enterSite(id: Site) {

@@ -38,7 +38,8 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, onSelec
   controls.zoomToCursor = true
   const moon = new THREE.Mesh(new THREE.SphereGeometry(radius,160,100),
     new THREE.MeshStandardMaterial({map,bumpMap,bumpScale:.012,roughness:1}))
-  scene.add(moon,new THREE.AmbientLight('white',.38))
+  // Keep a faint fill on the night side so landmarks remain easy to explore.
+  scene.add(moon,new THREE.AmbientLight('white',.12))
   const light = new THREE.DirectionalLight('#fffaf4',2.8)
   light.position.set(1.5,-2.3,4)
   scene.add(light)
@@ -227,6 +228,11 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, onSelec
   }
   return {
     floating,
+    setSunDirection(x: number, y: number, z: number) {
+      if (light.position.x===x && light.position.y===y && light.position.z===z) return
+      light.position.set(x,y,z)
+      motion.request()
+    },
     showSouthPole() {
       return flyTo(southPoleDirection,false,overviewDistance)
     },

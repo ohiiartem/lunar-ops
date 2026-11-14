@@ -60,11 +60,13 @@
       <section class="panel terrain-panel" id="viewer" hidden>
         <div class="panel-head">
           <h2>Landing site</h2>
-          <div class="tabs" aria-label="Terrain mode">
-            <button id="sky-button" aria-pressed="false">Sky</button>
-            <button id="map-button" aria-pressed="true">2D Map</button>
-            <button id="terrain-button" aria-pressed="false">3D Terrain</button>
-            <button id="surface-button" aria-pressed="false">Surface View</button>
+          <div class="view-controls">
+            <div class="tabs" role="group" aria-label="Terrain mode">
+              <button id="sky-button" aria-pressed="false">Sky</button>
+              <button id="map-button" aria-pressed="true">2D Map</button>
+              <button id="terrain-button" aria-pressed="false">3D Terrain</button>
+              <button id="surface-button" aria-pressed="false">Surface View</button>
+            </div>
             <button id="fullscreen">Fullscreen</button>
           </div>
         </div>
@@ -130,7 +132,7 @@
     </div>
     <section class="time-dock panel" aria-label="Observation timeline">
       <div class="time-controls">
-        <button id="play-timeline" aria-label="Play timeline" title="Play timeline" disabled>▶</button>
+        <button id="play-timeline" class="primary" aria-label="Play timeline" title="Play timeline" disabled><span class="playback-icon" aria-hidden="true"></span></button>
         <button id="previous-hour" aria-label="Previous observation">‹</button>
         <button id="next-hour" aria-label="Next observation">›</button>
         <button id="advance-day">+1 day</button>

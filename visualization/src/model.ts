@@ -27,6 +27,23 @@ export function gridDirection(lon: number, azimuth: number): [number, number] {
   return [Math.sin(angle), Math.cos(angle)]
 }
 
+export function lunarDirection(lon: number, lat: number, azimuth: number, elevation: number): [number, number, number] {
+  const longitude = lon * radians
+  const latitude = lat * radians
+  const bearing = azimuth * radians
+  const altitude = elevation * radians
+  const east = Math.sin(bearing) * Math.cos(altitude)
+  const north = Math.cos(bearing) * Math.cos(altitude)
+  const up = Math.sin(altitude)
+  // The globe uses +Y for lunar north and −Z for longitude 90° E.
+  const meridian = up * Math.cos(latitude) - north * Math.sin(latitude)
+  return [
+    meridian * Math.cos(longitude) - east * Math.sin(longitude),
+    up * Math.sin(latitude) + north * Math.cos(latitude),
+    -meridian * Math.sin(longitude) - east * Math.cos(longitude),
+  ]
+}
+
 // Interpolate only the displayed direction. Visibility uses the tabulated samples.
 export function directionAt(observations: Observations, target: Target, hour: number): [number, number] {
   const rows = observations[target]
