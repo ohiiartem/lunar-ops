@@ -4,6 +4,22 @@ Prototype for NASA Space Apps 2026, challenge "Lunar Landing Site Navigator".
 Compares "site + date" scenarios at the lunar south pole (potential sunlight, geometric Earth visibility).
 Not a real mission planning tool.
 
+## Run the 2D/3D visualization
+
+With Node.js 22.12 or newer, run from the repository root:
+
+```bash
+cd visualization
+npm ci
+npm run dev
+```
+
+Open the local URL printed by Vite. The viewer includes the Sun–Earth–Moon system,
+the lunar globe with landing markers, and the LOLA terrain and sky views for R01
+and R11. Bundled JPL Horizons observations let the viewer run independently of
+the Python server. See the [visualization README](visualization/README.md) for
+controls, data coverage, and sources.
+
 ## Setup
 
 ```bash

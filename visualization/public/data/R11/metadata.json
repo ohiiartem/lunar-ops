@@ -1,0 +1,76 @@
+{
+  "site": "R11",
+  "longitude_latitude_deg": [
+    -67.9321,
+    -88.6834
+  ],
+  "xy_m": [
+    -37000.510022975184,
+    15000.207095102249
+  ],
+  "frame": "MOON_ME / DE421",
+  "crs_wkt": "PROJCS[\"unnamed\",GEOGCS[\"unnamed ellipse\",DATUM[\"unknown\",SPHEROID[\"unnamed\",1737400,0]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Polar_Stereographic\"],PARAMETER[\"latitude_of_origin\",-90],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",NORTH],AXIS[\"Northing\",NORTH]]",
+  "vertical_reference": "radial height in m above sphere R=1737400 m",
+  "source_url": "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site11/Site11_final_adj_5mpp_surf.tif",
+  "source_shape": [
+    3200,
+    3200
+  ],
+  "source_bounds_m": [
+    -45000.0,
+    7000.0,
+    -29000.0,
+    23000.0
+  ],
+  "source_pixel_m": [
+    5.0,
+    5.0
+  ],
+  "ground_m": 1793.7939453125,
+  "source_nodata": "nan",
+  "mast_height_m": 2,
+  "heightmaps": {
+    "256": {
+      "min_m": 621.0438842773438,
+      "step_m": 0.018222695329487844,
+      "nodata_code": 0,
+      "affine": [
+        19.53125,
+        0.0,
+        -39505.0,
+        0.0,
+        -19.53125,
+        17505.0
+      ],
+      "resampling": "average"
+    },
+    "512": {
+      "min_m": 618.0582885742188,
+      "step_m": 0.01827198801236524,
+      "nodata_code": 0,
+      "affine": [
+        9.765625,
+        0.0,
+        -39505.0,
+        0.0,
+        -9.765625,
+        17505.0
+      ],
+      "resampling": "average"
+    },
+    "1024": {
+      "min_m": 616.5665283203125,
+      "step_m": 0.01829762903666894,
+      "nodata_code": 0,
+      "affine": [
+        4.8828125,
+        0.0,
+        -39505.0,
+        0.0,
+        -4.8828125,
+        17505.0
+      ],
+      "resampling": "bilinear"
+    }
+  }
+}

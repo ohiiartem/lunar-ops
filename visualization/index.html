@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LUNAR OPS · Lunar Landing Site Navigator</title>
+</head>
+<body>
+  <main id="mission-workspace">
+    <header class="masthead">
+      <div><strong class="brand">LUNAR <span>OPS</span></strong><p>Lunar Landing Site Navigator</p></div>
+      <div class="mission-id"><strong id="active-site">Lunar South Pole</strong><small id="mission-date"></small></div>
+      <div class="sources"><button id="system-open" aria-pressed="false">Solar system</button><a href="https://pgda.gsfc.nasa.gov/products/78">NASA LOLA</a><a href="https://ssd.jpl.nasa.gov/horizons/">JPL Horizons</a></div>
+    </header>
+    <div id="site-settings" class="workspace" data-mode="globe">
+    <p id="status" role="status"></p>
+    <div class="layout" id="results">
+      <aside class="panel site-panel">
+        <h2>Landing Site</h2>
+        <label for="site">Landing site</label>
+        <select id="site">
+          <option value="R01">R01 · Connecting Ridge</option>
+          <option value="R11">R11 · de Gerlache Rim 1</option>
+        </select>
+        <details class="site-details" id="site-details" open><summary>Site details</summary><dl id="site-facts"></dl></details>
+        <button id="explore" class="primary">Explore terrain <span aria-hidden="true">↗</span></button>
+        <button id="return-globe" class="back" hidden>← Home</button>
+        <details id="moon-catalog" hidden><summary>Moon markers</summary><div id="moon-catalog-items"></div></details>
+        <div id="local-layers" hidden>
+        <div id="map-layer-controls">
+        <label for="map-layer">Map layer</label>
+        <select id="map-layer"><option value="elevation.webp">Elevation</option><option value="hillshade.webp">Hillshade</option></select>
+        </div>
+        <label class="check"><input id="directions" type="checkbox" checked> Sun and Earth directions</label>
+        </div>
+      </aside>
+      <div class="scene-stack">
+      <section id="overview" aria-label="Lunar globe">
+        <div class="scene-header"><span>LUNAR GLOBE</span></div>
+        <div id="moon-globe" class="moon-view">Loading lunar globe…</div>
+        <div class="globe-tools" aria-label="Globe camera controls">
+          <button id="globe-in" aria-label="Zoom in">+</button>
+          <button id="globe-out" aria-label="Zoom out">−</button>
+          <button id="globe-reset">Reset view</button>
+          <button id="globe-pole">South Pole</button>
+          <button id="globe-fullscreen" aria-label="Toggle globe fullscreen">⛶</button>
+        </div>
+        <button id="globe-floating" class="floating-setting" aria-label="Floating Moon" aria-pressed="false" disabled>Floating Moon: OFF</button>
+        <p class="scene-caption">Drag to orbit · Shift + drag to pan · Scroll or pinch to zoom</p>
+      </section>
+      <section id="system-view" aria-label="Sun, Earth and Moon" hidden>
+        <div id="solar-scene" class="viewport"></div>
+        <div class="system-toolbar">
+          <button id="system-back">← Back</button>
+          <button id="system-reset">System view</button>
+          <button id="system-fullscreen" aria-label="Enter fullscreen">⛶</button>
+        </div>
+        <p class="system-help">Drag to orbit · Scroll to zoom · Select Moon to open its map</p>
+      </section>
+      <section class="panel terrain-panel" id="viewer" hidden>
+        <div class="panel-head">
+          <h2>Landing site</h2>
+          <div class="tabs" aria-label="Terrain mode">
+            <button id="sky-button" aria-pressed="false">Sky</button>
+            <button id="map-button" aria-pressed="true">2D Map</button>
+            <button id="terrain-button" aria-pressed="false">3D Terrain</button>
+            <button id="surface-button" aria-pressed="false">Surface View</button>
+            <button id="fullscreen">Fullscreen</button>
+          </div>
+        </div>
+        <div id="map-view" class="viewport">
+          <div id="map-stage">
+          <img id="map-image" alt="LOLA terrain map">
+          <svg id="map-overlay" viewBox="0 0 512 512" aria-label="Directions to Earth and Sun"></svg>
+          </div>
+          <div class="map-tools"><button id="zoom-in" aria-label="Zoom in on map">+</button><button id="zoom-out" aria-label="Zoom out on map">−</button><button id="zoom-reset">Reset</button></div>
+        </div>
+        <div id="sky-view" class="sky-view" hidden></div>
+        <div id="surface-view" class="sky-view" hidden></div>
+        <div id="surface-tools" class="viewer-tools" hidden>
+          <button id="surface-left" aria-label="Turn left">←</button>
+          <button id="surface-right" aria-label="Turn right">→</button>
+        </div>
+        <div id="terrain-view" class="viewport" hidden></div>
+        <div id="terrain-tools" class="viewer-tools" hidden>
+          <button id="terrain-in" aria-label="Zoom in on terrain">+</button>
+          <button id="terrain-out" aria-label="Zoom out on terrain">−</button>
+          <button id="terrain-reset">Reset</button>
+          <button id="terrain-surface">View from landing marker</button>
+          <label>Vertical scale <select id="exaggeration"><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option></select></label>
+          <label class="check"><input id="wireframe" type="checkbox"> Wireframe</label>
+        </div>
+        <p id="terrain-caption" class="caption" hidden>Directional light follows the Sun. Terrain visibility uses the LOLA horizon profile.</p>
+        <div id="map-readouts" class="viewer-tools">
+          <div class="map-scale"><div id="scale-line"></div><span id="scale-label"></span></div>
+          <div id="height-legend"><div class="height-gradient"></div><span id="height-range"></span></div>
+          <output id="map-sample">Move over the map to sample elevation</output>
+        </div>
+        <p class="caption"><span class="earth">● Earth</span> · <span class="sun">● Sun</span> · <span id="view-help">Map top is grid +Y</span></p>
+      </section>
+      </div>
+      <aside id="system-panel" class="panel" aria-label="Solar system objects" hidden>
+        <div class="system-profile">
+          <img id="system-preview" alt="" hidden>
+          <h2 id="system-name">Sun, Earth and Moon</h2>
+          <p id="system-description">Follow Earth around the Sun and the Moon around Earth. Select the Moon to open the lunar globe.</p>
+          <dl id="system-coordinates"></dl>
+        </div>
+        <label class="system-site">Observation site <select id="system-site">
+          <option value="R01">R01 · Connecting Ridge</option>
+          <option value="R11">R11 · de Gerlache Rim 1</option>
+        </select></label>
+        <div class="system-pickers" aria-label="Select a body">
+          <button data-body="Sun" aria-pressed="false"><span class="body-dot body-sun"></span>Sun</button>
+          <button data-body="Earth" aria-pressed="false"><span class="body-dot body-earth"></span>Earth</button>
+          <button data-body="Moon" aria-label="Open Moon globe"><span class="body-dot body-moon"></span>Moon ↗</button>
+        </div>
+        <div class="system-legend" aria-label="Orbit legend">
+          <span>Earth around the Sun</span><span>Moon around Earth</span>
+        </div>
+        <p class="caption">Orbital positions from JPL Horizons. Sizes and distances are scaled for visibility.</p>
+      </aside>
+      <section class="panel compare">
+        <h2>Mission Conditions</h2>
+        <label for="mission-time">Observation time (UTC)</label>
+        <input id="mission-time" type="datetime-local" step="1800">
+        <div id="comparison"></div>
+        <p class="caption">Sun visibility uses its upper edge. Earth visibility uses its center. Terrain estimates use the available LOLA coverage.</p>
+      </section>
+    </div>
+    <section class="time-dock panel" aria-label="Observation timeline">
+      <div class="time-controls">
+        <button id="play-timeline" aria-label="Play timeline" title="Play timeline" disabled>▶</button>
+        <button id="previous-hour" aria-label="Previous observation">‹</button>
+        <button id="next-hour" aria-label="Next observation">›</button>
+        <button id="advance-day">+1 day</button>
+        <button id="advance-five">+5 days</button>
+        <label>Speed <select id="play-speed"><option value="12">6 h/s</option><option value="48" selected>24 h/s</option><option value="96">48 h/s</option></select></label>
+      </div>
+      <div class="time-track">
+        <label class="caption" for="hour">Observation timeline <output id="date"></output></label>
+        <input id="hour" type="range" min="0" max="1439" value="526">
+        <div class="time-fields"><label>Day <input id="day-range" type="range" min="0" value="0"></label>
+          <label>Time of day <input id="day-time" type="range" min="0" value="0"></label></div>
+        <div class="range-labels"><span id="period-start"></span><span id="period-end"></span></div>
+      </div>
+    </section>
+    <details class="panel analysis" id="analysis">
+      <summary>Scientific Analysis</summary>
+      <p class="caption">Solid lines show object altitude. Dashed lines show the terrain horizon at the same azimuth. Shading marks visible samples. Select a point to change the observation time.</p>
+      <div id="timeline"></div>
+      <div id="intervals"></div>
+    </details>
+    </div>
+    <footer><a href="https://svs.gsfc.nasa.gov/4720">Lunar imagery · NASA SVS</a> · <a href="https://planetarynames.wr.usgs.gov/Page/MOON/target">Lunar gazetteer · USGS</a></footer>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
