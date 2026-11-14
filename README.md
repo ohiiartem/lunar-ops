@@ -20,7 +20,7 @@ LUNAR_OPS_DEMO=1 .venv/bin/uvicorn backend.main:app --reload
 ```
 
 - Interactive API docs: http://127.0.0.1:8000/docs
-- If a `frontend/` folder exists, it is served at `/`.
+- If `visualization/dist` exists (`npm run build` in `visualization/`), it is served at `/`.
 - **`LUNAR_OPS_DEMO=1` uses SYNTHETIC Sun/Earth positions** (made-up smooth curves), only so the page can be built
   before the JPL Horizons tables are ready. Responses then carry `"data_source": "synthetic_demo"` and the UI must
   show a warning. Real numbers come from `backend/data/horizons_<site_id>.csv` (columns
@@ -60,14 +60,13 @@ doi:10.1016/j.pss.2020.105119; site numbering from Mazarico et al. 2011, Icarus 
 ```bash
 .venv/bin/python scripts/inspect_dem.py            # prints DEM metadata, writes docs/site01_relief.png
 .venv/bin/python scripts/build_site.py Site23      # horizon profile + sites.json entry + docs/Site23_horizon.png
-.venv/bin/python scripts/build_dem_web.py          # small terrain grids for the 3D map -> frontend/dem/
 .venv/bin/python scripts/import_horizons.py Site01 --sun sun.csv --earth earth.csv   # JPL tables -> backend/data/horizons_Site01.csv
 ```
 
 ## Layout
 
 - `backend/calc/`: horizon, combine, metrics, ephemeris loader (plain Python)
-- `backend/api/`, `backend/main.py`: FastAPI, serves `frontend/` at `/`
+- `backend/api/`, `backend/main.py`: FastAPI, serves the built web page at `/`
 - `backend/data/`: `sites.json`, `horizon_<id>.json`, `horizons_<id>.csv` (JPL, pending), DEM `.tif` (not in git)
-- `frontend/`: single page (vanilla JS + bundled three.js, no CDN), `frontend/dem/` terrain grids
+- `visualization/`: web page (Vite + TypeScript + three.js), built into `visualization/dist`
 - `docs/`: API contracts, horizon plots

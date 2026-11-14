@@ -16,7 +16,7 @@ from backend.api.errors import ApiError, error_body
 from backend.api.routes import router
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
+FRONTEND = ROOT / "visualization" / "dist"  # built web page (npm run build in visualization/)
 
 app = FastAPI(title="Lunar OPS", description="Prototype: potential sunlight and geometric Earth visibility at lunar south pole sites")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -41,4 +41,4 @@ else:
 
     @app.get("/")
     def root():
-        return {"message": "Lunar OPS API is running. No frontend/ folder yet. See /docs."}
+        return {"message": "Lunar OPS API is running. Web page is not built yet (see visualization/README.md). See /docs."}
