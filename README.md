@@ -31,6 +31,10 @@ Terrain assets of the page are made from the LOLA tiles in `backend/data/`:
 .venv/bin/python visualization/scripts/export_data.py /tmp/lola     # exports every site folder found in /tmp/lola
 ```
 
+3D Terrain uses the 1024 height grid (about 5 m, the source resolution) and computes sharp shadows per pixel by
+marching a ray towards the real Sun direction over the height texture (WebGL2, float textures). On a weak GPU add
+`?shadows=map` to the URL (for example http://127.0.0.1:8000/?shadows=map) to use the classic shadow map instead.
+
 ## Run the server
 
 From the repository root:

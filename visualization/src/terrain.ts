@@ -5,9 +5,8 @@ import { smoothOrbit } from './motion'
 import { colors, directionAt, gridDirection, radians, readJson, targets } from './model'
 import type { Affine, Metadata, Observations, Site, Target, TerrainGrid } from './model'
 
-export function decodeTerrain(data: DataView, metadata: Metadata): TerrainGrid {
-  const size = 512
-  const info = metadata.heightmaps['512']
+export function decodeTerrain(data: DataView, metadata: Metadata, size = 512): TerrainGrid {
+  const info = metadata.heightmaps[String(size)]
   const elevation_m = Array.from({ length: size }, (_, row) =>
     Array.from({ length: size }, (_, col) => {
       const code = data.getUint16((row * size + col) * 2, true)
@@ -76,9 +75,11 @@ export function createTerrain(host: HTMLElement, metadata: Metadata, grid: Terra
   const col = Math.max(0, Math.min(cols-1, Math.floor((ox-x0)/dx)))
   const row = Math.max(0, Math.min(rows-1, Math.floor((oy-y0)/dy)))
   const base = grid.elevation_m[row][col] ?? 0
-  const vertices: number[] = []
-  const indices: number[] = []
-  const tint: number[] = []
+  // Typed arrays: a 1024 grid has over a million vertices and six million indices.
+  const vertices = new Float32Array(rows*cols*3)
+  const indices = new Uint32Array((rows-1)*(cols-1)*6)
+  let indexCount = 0
+  const tint = new Float32Array(rows*cols*3)
   const color = new THREE.Color()
   const low = new THREE.Color('#555960')
   const high = new THREE.Color('#9c9c9d')
@@ -89,34 +90,101 @@ export function createTerrain(host: HTMLElement, metadata: Metadata, grid: Terra
   }
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const value = grid.elevation_m[r][c]
-    vertices.push(x0 + (c+.5)*dx - ox, (value ?? base)-base, oy - (y0 + (r+.5)*dy))
+    const a = r*cols+c
+    vertices.set([x0 + (c+.5)*dx - ox, (value ?? base)-base, oy - (y0 + (r+.5)*dy)], a*3)
     color.copy(low).lerp(high, ((value ?? min)-min)/(max-min || 1))
-    tint.push(color.r, color.g, color.b)
+    tint.set([color.r, color.g, color.b], a*3)
     if (r+1 >= rows || c+1 >= cols) continue
     if ([value, grid.elevation_m[r+1][c], grid.elevation_m[r][c+1], grid.elevation_m[r+1][c+1]].includes(null)) continue
-    const a = r*cols+c
-    indices.push(a,a+cols,a+1,a+1,a+cols,a+cols+1)
+    indices.set([a,a+cols,a+1,a+1,a+cols,a+cols+1], indexCount)
+    indexCount += 6
   }
   const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(tint, 3))
-  geometry.setIndex(indices)
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(tint, 3))
+  geometry.setIndex(new THREE.BufferAttribute(indices.subarray(0, indexCount), 1))
   geometry.computeVertexNormals()
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })
   const mesh = new THREE.Mesh(geometry, material)
   geometry.computeBoundingBox()
-  mesh.castShadow = mesh.receiveShadow = !grid.flat
+  // Sharp shadows: each pixel marches a ray towards the Sun over the height grid.
+  // Add ?shadows=map to the URL to use the shadow map instead.
+  const rayShadows = !grid.flat && new URLSearchParams(location.search).get('shadows') !== 'map'
+  const rm = {
+    uHeight: { value: null as THREE.DataTexture | null },
+    uGrid: { value: new THREE.Vector4(x0-ox, oy-y0, dx*cols, dy*rows) },
+    uSunDir: { value: new THREE.Vector3(0,1,0) },
+    uExag: { value: 1 },
+    uMaxH: { value: max-base },
+    uMinH: { value: min-base },
+  }
+  if (rayShadows) {
+    const heights = new Float32Array(rows*cols)
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) heights[r*cols+c] = (grid.elevation_m[r][c] ?? base)-base
+    const texture = new THREE.DataTexture(heights, cols, rows, THREE.RedFormat, THREE.FloatType)
+    const linear = renderer.extensions.has('OES_texture_float_linear')
+    texture.minFilter = texture.magFilter = linear ? THREE.LinearFilter : THREE.NearestFilter
+    texture.needsUpdate = true
+    rm.uHeight.value = texture
+    material.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, rm)
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vRmPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRmPos = position;')
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+varying vec3 vRmPos;
+uniform sampler2D uHeight;
+uniform vec4 uGrid;
+uniform vec3 uSunDir;
+uniform float uExag;
+uniform float uMaxH;
+uniform float uMinH;
+float rmHeight(vec2 xz) {
+  vec2 uv = vec2((xz.x-uGrid.x)/uGrid.z, (uGrid.y-xz.y)/uGrid.w);
+  if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) return -1e6;
+  return texture2D(uHeight, uv).r;
+}
+// 1 = lit, 0 = in shadow. The penumbra width follows the Sun's angular size (about 0.53 deg).
+float rmShadow() {
+  vec3 origin = vec3(vRmPos.x, vRmPos.y*uExag, vRmPos.z);
+  vec3 dir = normalize(uSunDir);
+  float lit = 1.;
+  float t = 2.;
+  for (int i = 0; i < 128; i++) {
+    vec3 q = origin + dir*t;
+    if ((dir.y > 0. && q.y > uMaxH*uExag + 5.) || (dir.y < 0. && q.y < uMinH*uExag - 5.)) break;
+    float h = rmHeight(q.xz);
+    if (h < -1e5) break;
+    lit = min(lit, clamp((q.y - h*uExag + 0.4)/(t*0.0093), 0., 1.));
+    if (lit <= 0.) break;
+    t += max(3., t*.045);
+  }
+  return lit * lit * (3. - 2.*lit);
+}`)
+        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+{
+  float rmLit = rmShadow();
+  reflectedLight.directDiffuse *= rmLit;
+  reflectedLight.directSpecular *= rmLit;
+}`)
+    }
+  }
+  mesh.castShadow = !grid.flat && !rayShadows
+  mesh.receiveShadow = !grid.flat && !rayShadows
   // Keep the terrain readable when the API reports no direct sunlight.
+  // In sunlight the fill is nearly off, so shadows stay almost black as on the real Moon.
   const fill = new THREE.HemisphereLight('#dce8ff', '#727886', .63)
   fill.position.set(-.5, 1, .35)
-  scene.add(mesh, fill, new THREE.AmbientLight('#e4ecff', .24))
-  const light = new THREE.DirectionalLight('#ffdfad', 0)
+  const ambient = new THREE.AmbientLight('#e4ecff', .24)
+  scene.add(mesh, fill, ambient)
+  const light = new THREE.DirectionalLight('#fff1dc', 0)
   const shadowDirection = new THREE.Vector3()
   // Reuse the depth pass between small changes in the Sun's direction.
   const shadowUpdateCosine = Math.cos(.12 * radians)
-  light.castShadow = !grid.flat
-  light.shadow.mapSize.set(2048, 2048)
-  light.shadow.radius = 3
+  light.castShadow = !grid.flat && !rayShadows
+  light.shadow.mapSize.set(4096, 4096)
+  light.shadow.radius = 1.5
   light.shadow.bias = -.00012
   light.shadow.normalBias = 4 * scale
   scene.add(light)
@@ -289,6 +357,7 @@ export function createTerrain(host: HTMLElement, metadata: Metadata, grid: Terra
     },
     style(exaggeration: number, wireframe: boolean, directions: boolean) {
       mesh.scale.y = exaggeration
+      rm.uExag.value = exaggeration
       const {min,max} = geometry.boundingBox!
       const bounds = Math.hypot(Math.max(Math.abs(min.x),Math.abs(max.x)),
         Math.max(Math.abs(min.y),Math.abs(max.y))*exaggeration,
@@ -322,7 +391,11 @@ export function createTerrain(host: HTMLElement, metadata: Metadata, grid: Terra
           // The API visibility flag describes the landing point. The depth map
           // determines which slopes and depressions in the rest of the mesh receive light.
           light.position.copy(direction).multiplyScalar(2*light.shadow.camera.right)
-          light.intensity = 3.1 * THREE.MathUtils.smoothstep(elevation,-3,-.5)
+          rm.uSunDir.value.copy(direction)
+          const day = THREE.MathUtils.smoothstep(elevation,-3,-.5)
+          light.intensity = 3.6 * day
+          fill.intensity = THREE.MathUtils.lerp(.63,.07,day)
+          ambient.intensity = THREE.MathUtils.lerp(.24,.02,day)
           if (light.castShadow && light.intensity>0 && shadowDirection.dot(direction)<shadowUpdateCosine) {
             shadowDirection.copy(direction)
             renderer.shadowMap.needsUpdate = true

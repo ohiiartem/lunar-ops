@@ -22,7 +22,7 @@ All numbers in the examples are **illustrative**, not real results.
 | HTTP | code | When |
 |---|---|---|
 | 404 | `site_not_found` | `site_id` is not in `/api/sites` |
-| 422 | `bad_params` | missing field, wrong type, `days` not in 1..366, `step_min` not in 5..120, or `start`/`step_min` do not fit the step grid of the stored table |
+| 422 | `bad_params` | missing field, wrong type, `days` not in 1..366, `step_min` not in 10..120 (the stored tables have a 10-minute step), or `start`/`step_min` do not fit the step grid of the stored table |
 | 422 | `date_out_of_range` | the period is outside the precomputed data range of the site |
 | 422 | `too_many_points` | `days * 1440 / step_min > 5000` |
 | 422 | `incompatible_scenarios` | `/api/compare`: `a.days != b.days` or `a.step_min != b.step_min` |

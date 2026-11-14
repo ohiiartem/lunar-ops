@@ -8,7 +8,7 @@ import { countdownHtml, describe } from './countdown'
 import { num } from './format'
 import { mapNavigation } from './map-navigation'
 import { colors, directionAt, explainVisibility, gridDirection, lunarDirection, names, readJson, targets } from './model'
-import type { Metadata, Observations, Site } from './model'
+import type { Metadata, Observations, Site, TerrainGrid } from './model'
 import type { SystemBody } from './solar-system'
 
 const element = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
@@ -85,6 +85,21 @@ function loadHeights(data: Data): Promise<DataView> {
     })
   }
   return data.heights
+}
+
+// The 3D mesh uses the 1024 grid (about 5 m, the source resolution); the 512 grid is the fallback.
+async function loadMesh(data: Data, decode: (view: DataView, metadata: Metadata, size?: number) => TerrainGrid) {
+  const metadata = data.metadata!
+  try {
+    if (!metadata.heightmaps['1024']) throw new Error('No 1024 grid')
+    const response = await fetch(data.url+'terrain-1024.bin', { signal: siteLoading?.signal })
+    const buffer = response.ok ? await response.arrayBuffer() : undefined
+    if (buffer?.byteLength !== 1024*1024*2) throw new Error('Invalid 1024 grid')
+    return { metadata, grid: decode(new DataView(buffer), metadata, 1024) }
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') throw error
+    return { metadata, grid: decode(await loadHeights(data), metadata, 512) }
+  }
 }
 
 function renderScale() {
@@ -322,7 +337,7 @@ async function openTerrain() {
     const module = await import('./terrain')
     if (request !== revision) return
     const model = data.metadata
-      ? { metadata:data.metadata, grid:module.decodeTerrain(await loadHeights(data),data.metadata) }
+      ? await loadMesh(data,module.decodeTerrain)
       : await module.loadSiteTerrain(data.site,siteLoading?.signal)
     if (request !== revision) return
     terrainView.replaceChildren()
