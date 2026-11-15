@@ -336,6 +336,10 @@ footer a:hover { color:var(--accent); }
 .terrain-handoff .scene-stack { min-height:var(--scene-height, calc(100svh - 190px)); pointer-events:none; }
 .terrain-handoff #overview { position:absolute; inset:0; z-index:1; }
 #mission-workspace:fullscreen { max-width:none; overflow:auto; background:var(--bg-scene),var(--bg); }
+body.workspace-expanded { overflow:hidden; }
+#mission-workspace.expanded-workspace {
+  position:fixed; inset:0; z-index:100; max-width:none; overflow:auto; background:var(--bg-scene),var(--bg);
+}
 
 /* ---------- system mode ---------- */
 #solar-scene canvas { touch-action:none; }
@@ -464,7 +468,16 @@ main:has(#site-settings[data-mode="globe"]) > footer { padding:0 var(--gutter) 8
   .scenario-controls .caption { position:static; transform:none; white-space:normal; flex-basis:100%; }
   .layout { grid-template-columns:minmax(0,1fr); }
   #site-settings[data-mode="globe"] > .layout { grid-template-columns:minmax(0,1fr); }
-  #site-settings[data-mode="globe"] .scene-stack { height:55svh; min-height:380px; }
+  .scene-stack > .time-dock {
+    position:static; margin:10px 0 0; padding:10px 12px; gap:8px; flex-wrap:wrap;
+  }
+  .scene-stack > .time-dock .time-track { flex-basis:100%; }
+  #site-settings[data-mode="globe"] .scene-stack { height:auto; min-height:0; }
+  #site-settings[data-mode="globe"] #overview { position:relative; inset:auto; height:auto; }
+  #site-settings[data-mode="globe"] .moon-view {
+    position:relative; inset:auto; height:clamp(320px,46svh,440px);
+  }
+  #site-settings[data-mode="globe"].terrain-handoff #overview { position:absolute; inset:0; }
   .scene-stack { grid-row:1; }
   #overview { height:55svh;min-height:380px; }
   .site-panel { grid-row:2; }
@@ -474,8 +487,11 @@ main:has(#site-settings[data-mode="globe"]) > footer { padding:0 var(--gutter) 8
   #comparison,#timeline { grid-template-columns:1fr; }
   .scene-caption { font-size:10px; }
   .site-marker { width:144px; }
-  #site-settings[data-mode="globe"] .globe-tools { flex-wrap:wrap; justify-content:center; width:max-content; max-width:calc(100% - 16px); bottom:44px; }
-  #site-settings[data-mode="globe"] .scene-caption { bottom:10px; }
+  #site-settings[data-mode="globe"] .globe-tools {
+    position:static; transform:none; flex-wrap:wrap; justify-content:center;
+    width:max-content; max-width:calc(100% - 16px); margin:4px auto 8px;
+  }
+  #site-settings[data-mode="globe"] .scene-caption { position:static; margin:0 8px 8px; }
   .scene-header { top:4px; }
   .site-details dl { margin-top:10px; }
   .terrain-handoff .scene-stack { min-height:max(380px,55svh); }
@@ -488,4 +504,14 @@ main:has(#site-settings[data-mode="globe"]) > footer { padding:0 var(--gutter) 8
 }
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after { transition:none!important;animation:none!important; }
+}
+
+@media (max-width:630px) and (pointer:coarse) {
+  .masthead button, .site-panel button, .viewer-tools button,
+  .globe-tools button, .time-controls button, .tabs button { min-height:44px; }
+  .scenario-controls :is(select,input[type="date"],input[type="number"]),
+  .site-panel select, .site-compare-panels :is(select,input[type="date"]) { font-size:16px; }
+  .time-track input[type="range"] { min-height:30px; }
+  #site-settings[data-mode="terrain"] .site-panel { grid-row:1; }
+  #site-settings[data-mode="terrain"] .scene-stack { grid-row:2; }
 }

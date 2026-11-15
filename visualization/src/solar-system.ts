@@ -48,7 +48,7 @@ export async function createSolarSystem(host: HTMLElement, onSelect: (body: Syst
   let renderer: THREE.WebGLRenderer
   try { renderer = new THREE.WebGLRenderer({alpha:true,antialias:true}) }
   catch (error) { earthMap.dispose(); moonMap.dispose(); throw error }
-  renderer.setPixelRatio(Math.min(1.7,devicePixelRatio))
+  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.7))
   renderer.domElement.setAttribute('aria-label','Interactive Sun, Earth and Moon simulation')
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(37,1,.05,250)

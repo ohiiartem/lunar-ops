@@ -111,7 +111,7 @@
           <button id="terrain-out" aria-label="Zoom out on terrain">−</button>
           <button id="terrain-reset">Reset</button>
           <button id="terrain-surface">View from landing marker</button>
-          <label class="expert-only">Vertical scale <select id="exaggeration"><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option></select></label>
+          <label>Vertical scale <select id="exaggeration"><option value="1">1×</option><option value="2">2×</option><option value="5">5×</option></select></label>
           <label class="check expert-only"><input id="wireframe" type="checkbox"> Wireframe</label>
         </div>
         <p id="terrain-caption" class="caption expert-only" hidden>Directional light follows the Sun. Terrain visibility uses the LOLA horizon profile.</p>
@@ -164,7 +164,7 @@
         </details>
       </section>
     </div>
-    <section class="time-dock panel" aria-label="Observation timeline">
+    <section id="observation-timeline" class="time-dock panel" aria-label="Observation timeline">
       <div class="time-controls">
         <button id="play-timeline" class="primary" aria-label="Play timeline" title="Play timeline" disabled><span class="playback-icon" aria-hidden="true"></span><span id="play-label" class="simple-only" aria-hidden="true">Play</span></button>
         <button id="previous-hour" aria-label="Previous observation">‹</button>

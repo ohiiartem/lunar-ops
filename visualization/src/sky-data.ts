@@ -56,15 +56,23 @@ export const dayMs = 86_400_000
 class OfflineError extends Error {}
 
 export async function requestAPI<T>(path: string, signal: AbortSignal, body?: object): Promise<T> {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  if (signal.aborted) abort()
+  else signal.addEventListener('abort', abort, {once:true})
+  const timeout = setTimeout(abort,8000)
   let response: Response
   try {
     response = await fetch('/api/'+path, {
-      signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
+      signal: controller.signal,
       ...(body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}),
     })
   } catch (error) {
     if (signal.aborted) throw error
     throw new OfflineError('The API could not be reached.')
+  } finally {
+    clearTimeout(timeout)
+    signal.removeEventListener('abort',abort)
   }
   // Dev proxies and static hosts may return an HTML error page when the API is disconnected.
   if (!response.headers.get('content-type')?.includes('application/json')) {

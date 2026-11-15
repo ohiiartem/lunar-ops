@@ -50,7 +50,7 @@ export async function loadSiteTerrain(site: Site, signal?: AbortSignal) {
 
 export function createTerrain(host: HTMLElement, metadata: Metadata, grid: TerrainGrid, siteName: string, onSurface: () => void) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.7))
+  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.7))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFShadowMap
   renderer.shadowMap.autoUpdate = false
@@ -109,7 +109,9 @@ export function createTerrain(host: HTMLElement, metadata: Metadata, grid: Terra
   geometry.computeBoundingBox()
   // Sharp shadows: each pixel marches a ray towards the Sun over the height grid.
   // Add ?shadows=map to the URL to use the shadow map instead.
-  const rayShadows = !grid.flat && new URLSearchParams(location.search).get('shadows') !== 'map'
+  const shadowMode = new URLSearchParams(location.search).get('shadows')
+  const rayShadows = !grid.flat && shadowMode !== 'map' &&
+    (shadowMode === 'ray' || !matchMedia('(pointer: coarse)').matches)
   const rm = {
     uHeight: { value: null as THREE.DataTexture | null },
     uGrid: { value: new THREE.Vector4(x0-ox, oy-y0, dx*cols, dy*rows) },

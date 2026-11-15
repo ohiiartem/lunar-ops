@@ -374,7 +374,7 @@ async function openTerrain() {
 
 function syncTerrain() {
   const expert = workspace.dataset.detail==='expert'
-  terrain?.style(expert ? Number(exaggeration.value) : 1,expert && wireframe.checked,directions.checked)
+  terrain?.style(Number(exaggeration.value),expert && wireframe.checked,directions.checked)
 }
 
 function refreshCoverage(reset: boolean) {
@@ -748,6 +748,17 @@ element('map-stage').addEventListener('pointermove', event => {
 })
 const overview = element('overview')
 const settings = element('site-settings')
+const observationTimeline = element('observation-timeline')
+const timelineHome = document.createComment('Desktop timeline position')
+observationTimeline.before(timelineHome)
+const sceneStack = settings.querySelector('.scene-stack')!
+const compactLayout = matchMedia('(max-width:630px)')
+const placeTimeline = () => {
+  if (compactLayout.matches) sceneStack.append(observationTimeline)
+  else timelineHome.after(observationTimeline)
+}
+compactLayout.addEventListener('change', placeTimeline)
+placeTimeline()
 const moonCatalog = element<HTMLDetailsElement>('moon-catalog')
 const startup = new AbortController()
 const sitesReady = loadSites(startup.signal)
@@ -781,22 +792,44 @@ let navigation = 0
 let entering = false
 const fullscreenButtons = [element('fullscreen'),element('globe-fullscreen'),element('system-fullscreen')]
 
-async function toggleFullscreen() {
-  try {
-    if (document.fullscreenElement === workspace) await document.exitFullscreen()
-    else await workspace.requestFullscreen()
-  } catch { status.textContent = 'Fullscreen is unavailable.' }
-}
-
-for (const button of fullscreenButtons) button.onclick = toggleFullscreen
-document.addEventListener('fullscreenchange', () => {
-  const active = document.fullscreenElement === workspace
+function syncFullscreen() {
+  const active = document.fullscreenElement === workspace || workspace.classList.contains('expanded-workspace')
   const label = active ? 'Exit fullscreen' : 'Enter fullscreen'
   for (const button of fullscreenButtons) {
     button.setAttribute('aria-label', label)
     button.title = label
   }
   fullscreenButtons[0].textContent = active ? 'Exit fullscreen' : 'Fullscreen'
+}
+
+function setExpandedWorkspace(active: boolean) {
+  workspace.classList.toggle('expanded-workspace',active)
+  document.body.classList.toggle('workspace-expanded',active)
+  syncFullscreen()
+}
+
+async function toggleFullscreen() {
+  if (workspace.classList.contains('expanded-workspace')) {
+    setExpandedWorkspace(false)
+    return
+  }
+  if (document.fullscreenElement === workspace) {
+    await document.exitFullscreen()
+    return
+  }
+  if (document.fullscreenEnabled && workspace.requestFullscreen) {
+    try {
+      await workspace.requestFullscreen()
+      return
+    } catch { /* Embedded browsers may reject native fullscreen. */ }
+  }
+  setExpandedWorkspace(true)
+}
+
+for (const button of fullscreenButtons) button.onclick = toggleFullscreen
+document.addEventListener('fullscreenchange',syncFullscreen)
+document.addEventListener('keydown', event => {
+  if (event.key==='Escape' && workspace.classList.contains('expanded-workspace')) setExpandedWorkspace(false)
 })
 
 
@@ -949,7 +982,7 @@ async function enterSite(selected: Site) {
 
   const viewer = element('viewer')
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (world && !reducedMotion) {
+  if (world && !reducedMotion && typeof overview.animate==='function') {
     // Keep both views in the same scene slot until the handoff finishes.
     if (current) renderMap(current, Number(hour.value))
     settings.classList.add('terrain-handoff')

@@ -19,7 +19,7 @@ export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: 
   ])
   map.colorSpace = THREE.SRGBColorSpace
   const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true})
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.7))
+  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.7))
   map.anisotropy = Math.min(8,renderer.capabilities.getMaxAnisotropy())
   host.replaceChildren(renderer.domElement)
   const scene = new THREE.Scene()
