@@ -36,8 +36,11 @@ export function describe(flags: boolean[], index: number, stepMin: number, label
 }
 
 export function countdownHtml(item: { label: string; time: string }) {
-  const time = item.time.replace(/(\d+) (d|h|min)\b/g,
-    '<span class="countdown-part">$1 <span class="countdown-unit">$2</span></span>')
+  const time = item.time.replace(/(\d+) (d|h|min)\b/g,(_match,value,unit,offset)=>{
+    const part = `<span class="countdown-part${unit==='min'?' countdown-minutes':''}">${value} <span class="countdown-unit">${unit}</span></span>`
+    if (unit!=='min' || offset!==0) return part
+    return part+`<span class="countdown-under-hour">${value==='0'?'0 h':'Less than 1 h'}</span>`
+  })
   return `<span class="countdown-label">${item.label}</span><span class="countdown-time">${time}</span>`
 }
 

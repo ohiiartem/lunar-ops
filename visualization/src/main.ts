@@ -42,6 +42,9 @@ const daysInput = element<HTMLInputElement>('scenario-days')
 const stepSelect = element<HTMLSelectElement>('scenario-step')
 const terrainInput = element<HTMLInputElement>('scenario-terrain')
 const analyzeButton = element<HTMLButtonElement>('analyze')
+const shiftInput = element<HTMLInputElement>('shift-custom')
+const shiftInputError = element('shift-input-error')
+const shiftRange = element('shift-range')
 const shiftButtons = document.querySelectorAll<HTMLButtonElement>('[data-shift],[data-shift-custom]')
 const metrics = element('mission-metrics')
 const shiftResults = element('shift-results')
@@ -80,7 +83,6 @@ let siteLoading: AbortController | undefined
 const heightCodes = new Map<string, DataView>()
 const exaggeration = element<HTMLSelectElement>('exaggeration')
 const wireframe = element<HTMLInputElement>('wireframe')
-const directions = element<HTMLInputElement>('directions')
 const layer = element<HTMLSelectElement>('map-layer')
 const analysis = element<HTMLDetailsElement>('analysis')
 const asset = (id: string) => `${import.meta.env.BASE_URL}data/${encodeURIComponent(assetFolder(id))}/`
@@ -170,7 +172,7 @@ function drawDirections() {
     mapSky?.update(index,Number(hour.value),true)
   }
   else if (view==='terrain') terrain?.update(observations,index)
-  else sky?.update(index,Number(hour.value),directions.checked)
+  else sky?.update(index,Number(hour.value),true)
 }
 
 function selectHour(index: number) {
@@ -200,13 +202,7 @@ function renderMap(data: Data, position: number) {
   const v = (y - y0) / dy
   if (!overlay.hasChildNodes()) {
     overlay.innerHTML = `<defs><linearGradient id="map-light"><stop stop-color="#131b29" stop-opacity=".38"/><stop offset="1" stop-color="#ffe2a3" stop-opacity=".23"/></linearGradient></defs>
-      <rect id="map-lighting" width="512" height="512" fill="url(#map-light)"/>` + targets.map(target => `<g data-direction="${target}">
-      <defs><marker id="tip-${target}" markerWidth="6" markerHeight="6" refX="8" refY="4" viewBox="0 0 8 8" orient="auto">
-        <path d="M0 0L8 4L0 8Z" fill="${colors[target]}"/></marker></defs>
-      <line x1="${u}" y1="${v}" stroke="${colors[target]}" stroke-width="2.5" marker-end="url(#tip-${target})"/>
-      <g class="direction-tip">
-      <text x="0" y="-11" text-anchor="middle" fill="${colors[target]}">${names[target]}</text></g>
-      </g>`).join('') + `<circle cx="${u}" cy="${v}" r="5" fill="white" stroke="#17212a" stroke-width="2"/>`
+      <rect id="map-lighting" width="512" height="512" fill="url(#map-light)"/>` + `<circle cx="${u}" cy="${v}" r="5" fill="white" stroke="#17212a" stroke-width="2"/>`
   }
   const [sunAzimuth] = directionAt(observations,'Sun',position)
   const [lightX,lightY] = gridDirection(metadata.longitude_latitude_deg[0],sunAzimuth)
@@ -216,22 +212,7 @@ function renderMap(data: Data, position: number) {
   gradient.setAttribute('y1',String(.5+lightY*.5))
   gradient.setAttribute('y2',String(.5-lightY*.5))
   overlay.querySelector('#map-lighting')!.setAttribute('fill',observations.Sun[Number(hour.value)][3] ? 'url(#map-light)' : '#11182768')
-  for (const target of targets) {
-    const group = overlay.querySelector<SVGGElement>(`[data-direction="${target}"]`)!
-    group.style.display = directions.checked ? '' : 'none'
-    if (!directions.checked) continue
-    const [azimuth,elevation] = directionAt(observations,target,reducedMotion.matches ? Number(hour.value) : position)
-    const [east,north] = gridDirection(metadata.longitude_latitude_deg[0],azimuth)
-    const length = 90*Math.cos(elevation*Math.PI/180)
-    const tipX = u+length*east, tipY = v-length*north
-    const line = group.querySelector('line')!
-    line.setAttribute('x2',String(tipX))
-    line.setAttribute('y2',String(tipY))
-    const blocked = !observations[target][Number(hour.value)][3]
-    line.setAttribute('stroke-dasharray',blocked ? '4 3' : 'none')
-    group.querySelector('.direction-tip')!.setAttribute('transform',
-      `translate(${tipX+20*east} ${tipY-20*north})`)
-  }
+
 }
 
 function visibility(value: boolean) {
@@ -302,6 +283,7 @@ function render() {
 
 function setView(next: View) {
   view = next
+  element('sky-legend').hidden = next!=='sky' && next!=='surface'
   element('terrain-tools').hidden = next!=='terrain'
   element('terrain-caption').hidden = next!=='terrain'
   element('surface-tools').hidden = next!=='surface'
@@ -374,7 +356,7 @@ async function openTerrain() {
 
 function syncTerrain() {
   const expert = workspace.dataset.detail==='expert'
-  terrain?.style(Number(exaggeration.value),expert && wireframe.checked,directions.checked)
+  terrain?.style(Number(exaggeration.value),expert && wireframe.checked)
 }
 
 function refreshCoverage(reset: boolean) {
@@ -406,7 +388,9 @@ function clearComparison() {
   comparisonLoading = undefined
   shiftResults.replaceChildren()
   shiftStatus.textContent = ''
+  shiftStatus.classList.remove('shift-pending')
   for (const button of shiftButtons) button.disabled = true
+  shiftInput.disabled = true
 }
 
 function reportSource(demo: boolean, offline: boolean) {
@@ -490,7 +474,7 @@ async function selectSite() {
     }
     showMetrics(metrics,data.analysis)
     reportSource(data.demo,data.offline || catalogueOffline)
-    for (const button of shiftButtons) button.disabled = data.offline || catalogueOffline
+    updateShiftControls()
     updateSiteComparison(current)
     status.textContent = ''
     if (settings.dataset.mode==='terrain' && previousView==='terrain') void openTerrain()
@@ -509,8 +493,6 @@ function chooseSite(reset: boolean) {
   refreshCoverage(reset)
   return selectSite()
 }
-
-const shiftInput = element<HTMLInputElement>('shift-custom')
 
 function clearSiteComparison() {
   siteComparisonLoading?.abort()
@@ -617,30 +599,68 @@ function dataRange() {
   return Number.isFinite(from) && Number.isFinite(to) ? { from, to } : undefined
 }
 
-async function missionShift(shift: number) {
-  if (!current || current.offline || catalogueOffline) return
-  const a = current.scenario
-  const day = (ms: number) => new Date(ms).toISOString().slice(0,10)
+function shiftLimits() {
   const range = dataRange()
-  const start = Date.parse(a.start) + dayMs*shift
-  const end = start + dayMs*a.days
-  // Invalid input or no data: explain, keep the buttons usable (clearComparison would disable them).
-  if (!Number.isInteger(shift) || shift===0 || Math.abs(shift)>365) {
-    shiftResults.replaceChildren()
-    shiftStatus.textContent = 'Enter a whole number of days from −365 to 365, not 0.'
+  if (!current || !range) return
+  const start = Date.parse(current.scenario.start)
+  return {
+    min:Math.ceil((range.from-start)/dayMs),
+    max:Math.floor((range.to-start)/dayMs)-current.scenario.days,
+  }
+}
+
+function shiftError(shift: number) {
+  if (!Number.isInteger(shift) || shift===0) return 'Enter a whole number of days other than 0.'
+  const limits = shiftLimits()
+  if (!limits) return 'No data range is available for this site.'
+  if (shift>=limits.min && shift<=limits.max) return ''
+  const range = dataRange()!
+  const start = Date.parse(current!.scenario.start)+dayMs*shift
+  const end = start+dayMs*current!.scenario.days
+  return Number.isFinite(new Date(start).getTime()) && Number.isFinite(new Date(end).getTime())
+    ? `No data for a shift of ${shift>0?'+':'−'}${Math.abs(shift)} days: scenario B would cover ${dateOnly(start)} to ${dateOnly(end)}, `+
+      `the data covers ${dateOnly(range.from)} to ${dateOnly(range.to)} UTC.`
+    : 'This number is outside the available range.'
+}
+
+function updateShiftControls() {
+  const limits = shiftLimits()
+  const enabled = Boolean(current && !current.offline && !catalogueOffline && limits && (limits.min<0 || limits.max>0))
+  shiftInput.disabled = !enabled || !!comparisonLoading
+  shiftInput.min = limits ? String(limits.min) : ''
+  shiftInput.max = limits ? String(limits.max) : ''
+  shiftRange.textContent = enabled && limits
+    ? `Allowed: ${limits.min} to ${limits.max} days (excluding 0)`
+    : 'No shifts available.'
+  const hasValue = shiftInput.value!=='' || shiftInput.validity.badInput
+  const error = enabled && hasValue ? shiftError(shiftInput.valueAsNumber) : ''
+  shiftInputError.textContent = error
+  shiftInput.setCustomValidity(error)
+  shiftInput.setAttribute('aria-invalid',String(Boolean(error)))
+  for (const button of shiftButtons) {
+    const preset = button.dataset.shift
+    const blocked = preset!==undefined ? shiftError(Number(preset)) : error || !hasValue
+    button.disabled = !enabled || !!comparisonLoading || Boolean(blocked)
+    button.title = enabled && preset!==undefined ? String(blocked) : ''
+  }
+}
+
+async function missionShift(shift: number) {
+  if (!current || current.offline || catalogueOffline || comparisonLoading) return
+  const a = current.scenario
+  const error = shiftError(shift)
+  if (error) {
+    updateShiftControls()
+    shiftStatus.textContent = error
     return
   }
-  if (range && (start<range.from || end>range.to)) {
-    shiftResults.replaceChildren()
-    shiftStatus.textContent = `No data for a shift of ${shift>0?'+':'−'}${Math.abs(shift)} days: scenario B would cover ${day(start)} to ${day(end)}, `+
-      `the data covers ${day(range.from)} to ${day(range.to)} UTC.`
-    return
-  }
+  const start = Date.parse(a.start)+dayMs*shift
   const b = {...a,start:new Date(start).toISOString().replace('.000Z','Z')}
   clearComparison()
   const loader = new AbortController()
   comparisonLoading = loader
   shiftStatus.textContent = 'Comparing scenarios…'
+  shiftStatus.classList.add('shift-pending')
   try {
     const data = await requestAPI<Comparison>('compare',loader.signal,{a,b})
     if (loader.signal.aborted) return
@@ -650,7 +670,11 @@ async function missionShift(shift: number) {
   } catch (error) {
     if (!loader.signal.aborted) shiftStatus.textContent = errorMessage(error)
   } finally {
-    if (!loader.signal.aborted) for (const button of shiftButtons) button.disabled = false
+    if (!loader.signal.aborted) {
+      comparisonLoading = undefined
+      shiftStatus.classList.remove('shift-pending')
+      updateShiftControls()
+    }
   }
 }
 
@@ -669,8 +693,13 @@ element('surface-right').onclick = () => sky?.turn(30)
 for (const button of shiftButtons) {
   button.onclick = () => void missionShift(button.dataset.shift!==undefined ? Number(button.dataset.shift) : Number(shiftInput.value||NaN))
 }
+shiftInput.addEventListener('input', updateShiftControls)
 shiftInput.addEventListener('keydown', event => {
-  if (event.key==='Enter') { event.preventDefault(); void missionShift(Number(shiftInput.value||NaN)) }
+  if (event.key==='Enter') {
+    event.preventDefault()
+    updateShiftControls()
+    if (shiftInput.value && shiftInput.validity.valid) void missionShift(shiftInput.valueAsNumber)
+  }
 })
 startDate.onchange = stepSelect.onchange = () => refreshCoverage(false)
 element<HTMLFormElement>('scenario-form').onsubmit = event => {
@@ -724,7 +753,7 @@ layer.addEventListener('change', () => {
   if (current?.metadata) map.src = current.url+layer.value
   element('height-legend').hidden = layer.value!=='elevation.webp'
 })
-for (const input of [exaggeration,wireframe,directions]) input.addEventListener('change', () => { syncTerrain();render() })
+for (const input of [exaggeration,wireframe]) input.addEventListener('change', () => { syncTerrain();render() })
 element('terrain-in').onclick = () => terrain?.zoom(.8)
 element('terrain-out').onclick = () => terrain?.zoom(1.25)
 element('terrain-reset').onclick = () => terrain?.reset()
@@ -753,12 +782,34 @@ const timelineHome = document.createComment('Desktop timeline position')
 observationTimeline.before(timelineHome)
 const sceneStack = settings.querySelector('.scene-stack')!
 const compactLayout = matchMedia('(max-width:630px)')
-const placeTimeline = () => {
+const mobileSections = [
+  ['scenario-form','Analysis settings'],
+  ['mission-summary','Scenario results and comparison'],
+].map(([id,title]) => {
+  const content = element(id)
+  const disclosure = document.createElement('details')
+  disclosure.className = 'mobile-disclosure panel'
+  const summary = document.createElement('summary')
+  summary.textContent = title
+  disclosure.append(summary)
+  return {content,disclosure}
+})
+
+const placeMobileControls = () => {
   if (compactLayout.matches) sceneStack.append(observationTimeline)
   else timelineHome.after(observationTimeline)
+
+  for (const {content,disclosure} of mobileSections) {
+    if (compactLayout.matches && content.parentElement!==disclosure) {
+      content.before(disclosure)
+      disclosure.append(content)
+    } else if (!compactLayout.matches && content.parentElement===disclosure) {
+      disclosure.replaceWith(content)
+    }
+  }
 }
-compactLayout.addEventListener('change', placeTimeline)
-placeTimeline()
+compactLayout.addEventListener('change', placeMobileControls)
+placeMobileControls()
 const moonCatalog = element<HTMLDetailsElement>('moon-catalog')
 const startup = new AbortController()
 const sitesReady = loadSites(startup.signal)

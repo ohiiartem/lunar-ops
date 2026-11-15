@@ -51,7 +51,6 @@
         <label for="map-layer">Map layer</label>
         <select id="map-layer"><option value="elevation.webp">Elevation</option><option value="hillshade.webp">Hillshade</option></select>
         </div>
-        <label class="check"><input id="directions" type="checkbox" checked> Sun and Earth directions</label>
         </div>
       </aside>
       <div class="scene-stack">
@@ -94,7 +93,7 @@
         <div id="map-view" class="viewport">
           <div id="map-stage">
           <img id="map-image" alt="LOLA terrain map">
-          <svg id="map-overlay" viewBox="0 0 512 512" aria-label="Directions to Earth and Sun"></svg>
+          <svg id="map-overlay" viewBox="0 0 512 512" aria-label="Landing site and terrain shading"></svg>
           </div>
           <div class="map-tools"><button id="zoom-in" aria-label="Zoom in on map">+</button><button id="zoom-out" aria-label="Zoom out on map">−</button><button id="zoom-reset">Reset</button></div>
         </div>
@@ -120,7 +119,7 @@
           <div id="height-legend" class="expert-only"><div class="height-gradient"></div><span id="height-range"></span></div>
           <output id="map-sample" class="expert-only">Move over the map to sample elevation</output>
         </div>
-        <p class="caption"><span class="earth">● Earth</span> · <span class="sun">● Sun</span> · <span id="view-help">View the landing site from above</span></p>
+        <p class="caption"><span id="sky-legend"><span class="earth">● Earth</span> · <span class="sun">● Sun</span> · </span><span id="view-help">View the landing site from above</span></p>
       </section>
       </div>
       <aside id="system-panel" class="panel" aria-label="Solar system objects" hidden>
@@ -179,7 +178,7 @@
         <div class="range-labels"><span id="period-start"></span><span id="period-end"></span></div>
       </div>
     </section>
-    <section class="panel mission-results" aria-labelledby="metrics-heading">
+    <section class="panel mission-results" id="mission-summary" aria-labelledby="metrics-heading">
       <h2 id="metrics-heading">Scenario overview</h2>
       <div id="mission-metrics"></div>
       <div class="shift-controls" role="group" aria-label="Mission Shift">
@@ -188,9 +187,11 @@
         <button id="advance-five" data-shift="5" disabled>+5 days</button>
         <button id="advance-ten" data-shift="10" disabled>+10 days</button>
         <label class="shift-custom">Your option
-          <input id="shift-custom" type="number" step="1" min="-365" max="365" placeholder="days" inputmode="numeric" aria-label="Shift in days (negative = earlier)">
+          <input id="shift-custom" type="number" step="1" placeholder="days" inputmode="text" aria-label="Shift in days (negative = earlier)" aria-describedby="shift-range shift-input-error" disabled>
         </label>
         <button id="shift-custom-go" data-shift-custom disabled>Compare</button>
+        <span id="shift-range" class="caption"></span>
+        <span id="shift-input-error" class="no" role="status"></span>
       </div>
       <p id="shift-status" role="status"></p>
       <div id="shift-results"></div>

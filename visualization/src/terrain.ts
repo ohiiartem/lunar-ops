@@ -1,4 +1,3 @@
-import { sunTexture } from './sun-texture'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { smoothOrbit } from './motion'
@@ -198,10 +197,9 @@ float rmShadow() {
   scene.add(marker)
 
   const sphere = new THREE.SphereGeometry(1,64,40)
-  const sunMap = sunTexture()
   const earthMap = new THREE.TextureLoader().load(import.meta.env.BASE_URL+'earth-atmos.jpg',()=>draw())
   earthMap.colorSpace = THREE.SRGBColorSpace
-  const sun = new THREE.Mesh(sphere,new THREE.MeshBasicMaterial({map:sunMap,toneMapped:false}))
+  const sunPosition = new THREE.Vector3()
   const earthMaterial = new THREE.ShaderMaterial({
     uniforms: { surface: { value: earthMap }, sunDirection: { value: new THREE.Vector3(0,1,0) } },
     vertexShader: `
@@ -228,38 +226,14 @@ float rmShadow() {
     `,
   })
   const earth = new THREE.Mesh(sphere,earthMaterial)
-  sun.scale.setScalar(255*scale)
   earth.scale.setScalar(195*scale)
 
-  const haloMaterial = new THREE.ShaderMaterial({
-    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
-    vertexShader: `
-      varying vec2 haloUV;
-      void main() {
-        haloUV = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      varying vec2 haloUV;
-      void main() {
-        float radius = length(haloUV - 0.5) * 2.0;
-        float glow = exp(-radius * radius * 10.0) * (1.0 - smoothstep(0.7, 1.0, radius));
-        gl_FragColor = vec4(1.0, 0.54, 0.20, glow * 0.56);
-      }
-    `,
-  })
-  const halo = new THREE.Mesh(new THREE.PlaneGeometry(1300*scale, 1300*scale), haloMaterial)
-  scene.add(sun,earth,halo)
+  scene.add(earth)
   const earthshine = new THREE.DirectionalLight(0xa7cbff,0)
   scene.add(earthshine)
-  const bodies = {Sun:sun,Earth:earth}
-  const tracks = targets.map(target => {
-    const track = new THREE.Line(new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({color:colors[target], transparent:true, opacity:.43, depthWrite:false}))
-    scene.add(track)
-    return track
-  })
+  const earthTrack = new THREE.Line(new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({color:colors.Earth, transparent:true, opacity:.43, depthWrite:false}))
+  scene.add(earthTrack)
   let activeObservations: Observations | undefined
   function localDirection(azimuth: number, elevation: number) {
     const bearing = azimuth*radians
@@ -270,24 +244,13 @@ float rmShadow() {
     return new THREE.Vector3(x*Math.cos(angle), Math.sin(angle), -y*Math.cos(angle)).normalize()
   }
 
-  const labels = ([[marker,siteName],[sun,'Sun'],[earth,'Earth']] as const).map(([body,name]) => {
+  const labels = ([[marker,siteName],[earth,'Earth']] as const).map(([body,name]) => {
     const label = document.createElement('span')
     label.className = 'terrain-body-label'
     label.textContent = name
     label.hidden = true
     host.append(label)
     return {body,label}
-  })
-  const arrows = targets.map(target => {
-    const arrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), marker.position, 1100, colors[target], 130, 75)
-    // The arrows show directions, including rays blocked by the ground.
-    for (const part of [arrow.line, arrow.cone]) {
-      const materials = Array.isArray(part.material) ? part.material : [part.material]
-      materials.forEach(material => { material.depthTest = false })
-      part.renderOrder = 2
-    }
-    scene.add(arrow)
-    return arrow
   })
   const ray = new THREE.Raycaster()
   let pointerStart: [number,number] | undefined
@@ -307,7 +270,6 @@ float rmShadow() {
   const projected = new THREE.Vector3()
   const cameraUp = new THREE.Vector3()
   const draw = () => {
-    halo.quaternion.copy(camera.quaternion)
     renderer.render(scene, camera)
     cameraUp.set(0,1,0).applyQuaternion(camera.quaternion)
     for (const {body,label} of labels) {
@@ -323,7 +285,7 @@ float rmShadow() {
       label.style.top = `${y}px`
     }
   }
-  sun.visible = earth.visible = halo.visible = false
+  earth.visible = false
   function reset() {
     const halfField = Math.atan(Math.tan(camera.fov*radians/2)*Math.min(1,camera.aspect))
     const distance = overviewRadius/Math.sin(halfField)*1.04
@@ -357,7 +319,7 @@ float rmShadow() {
       controls.update()
       draw()
     },
-    style(exaggeration: number, wireframe: boolean, directions: boolean) {
+    style(exaggeration: number, wireframe: boolean) {
       mesh.scale.y = exaggeration
       rm.uExag.value = exaggeration
       const {min,max} = geometry.boundingBox!
@@ -373,20 +335,17 @@ float rmShadow() {
       shadowDirection.set(0,0,0)
       renderer.shadowMap.needsUpdate = true
       material.wireframe = wireframe
-      arrows.forEach(arrow => { arrow.visible = directions })
       draw()
     },
     update(observations: Observations, index: number) {
       if (activeObservations !== observations) {
         activeObservations = observations
-        targets.forEach((target, n) => {
-          const points = observations[target].map(([azimuth,elevation]) =>
-            localDirection(azimuth,elevation).multiplyScalar(orbitRadius).add(marker.position))
-          tracks[n].geometry.dispose()
-          tracks[n].geometry = new THREE.BufferGeometry().setFromPoints(points)
-        })
+        const points = observations.Earth.map(([azimuth,elevation]) =>
+          localDirection(azimuth,elevation).multiplyScalar(orbitRadius).add(marker.position))
+        earthTrack.geometry.dispose()
+        earthTrack.geometry = new THREE.BufferGeometry().setFromPoints(points)
       }
-      targets.forEach((target, n) => {
+      targets.forEach(target => {
         const [azimuth,elevation] = directionAt(observations,target,index)
         const direction = localDirection(azimuth,elevation)
         if (target==='Sun') {
@@ -411,12 +370,11 @@ float rmShadow() {
           earthshine.position.copy(direction).multiplyScalar(5000)
           earthshine.intensity = .06 * visible
         }
-        bodies[target].position.copy(marker.position).addScaledVector(direction,orbitRadius)
-        arrows[n].setDirection(direction)
+        const position = target==='Sun' ? sunPosition : earth.position
+        position.copy(marker.position).addScaledVector(direction,orbitRadius)
       })
-      earthMaterial.uniforms.sunDirection.value.subVectors(sun.position,earth.position).normalize()
-      halo.position.copy(sun.position)
-      sun.visible = earth.visible = halo.visible = true
+      earthMaterial.uniforms.sunDirection.value.subVectors(sunPosition,earth.position).normalize()
+      earth.visible = true
       draw()
     },
     dispose() {
@@ -427,16 +385,12 @@ float rmShadow() {
       material.dispose()
       markerGeometry.dispose()
       markerMaterial.dispose()
-      arrows.forEach(arrow => arrow.dispose())
-      tracks.forEach(track => { track.geometry.dispose(); track.material.dispose() })
+      earthTrack.geometry.dispose()
+      earthTrack.material.dispose()
       labels.forEach(({label}) => label.remove())
-      halo.geometry.dispose()
-      haloMaterial.dispose()
       light.shadow.dispose()
       sphere.dispose()
-      sun.material.dispose()
       earth.material.dispose()
-      sunMap.dispose()
       earthMap.dispose()
       renderer.dispose()
       renderer.domElement.remove()
