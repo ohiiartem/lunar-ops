@@ -14,8 +14,8 @@ function location(lon: number, lat: number) {
 export async function createGlobe(host: HTMLElement, index: HTMLElement, sites: Site[], onSelect: (site: Site) => void) {
   const loader = new THREE.TextureLoader()
   const [map,bumpMap] = await Promise.all([
-    loader.loadAsync(import.meta.env.BASE_URL+'lroc_color_2k.jpg'),
-    loader.loadAsync(import.meta.env.BASE_URL+'ldem_3_8bit.jpg'),
+    loader.loadAsync(import.meta.env.BASE_URL+'lunar-globe-color.webp'),
+    loader.loadAsync(import.meta.env.BASE_URL+'lunar-globe-bump.webp'),
   ])
   map.colorSpace = THREE.SRGBColorSpace
   const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true})
